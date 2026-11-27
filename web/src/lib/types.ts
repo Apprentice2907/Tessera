@@ -9,7 +9,9 @@ export type Status = 'todo' | 'prog' | 'done';
 export interface Cat { id: string; name: string; solid: string; fg: string; custom?: boolean }
 
 /** a timed event. `rep` ("Weekly · Mon, Wed") repeats it every week on its weekday; `skip` holds deleted single days */
-export interface CalEvent { id: string; cal: CalId; day: number; s: number; e: number; title: string; short?: string; rep?: string; skip?: number[] }
+export interface CalEvent { id: string; cal: CalId; day: number; s: number; e: number; title: string; short?: string; rep?: string; skip?: number[]; ct?: ContestRef }
+/** a contest the app put in the calendar by itself: where it's from, its page, and when the site said it runs (ms) */
+export interface ContestRef { plat: string; url: string; start: number; end: number }
 /** repeats with no time, so it shows as a dot. months: 'YYYY-MM' → getDay() numbers; a month without one carries the last over */
 export interface Routine { id: string; cal: CalId; title: string; months: Record<string, number[]>; skip?: number[] }
 /** a one-off task, from Today, the widget or the Calendar */

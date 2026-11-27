@@ -2,7 +2,6 @@
 // from Codeforces, CodeChef and LeetCode. Double-click a day to add, an event to edit.
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { create } from 'zustand';
 import { useData, update } from '../store/data';
 import { useClock, clock } from '../store/clock';
 import { closePop, openPop, setUI, toast, ui, useUI } from '../store/ui';
@@ -14,6 +13,7 @@ import { Bento, Copy, Tile, EASE } from '../ui/motion';
 import { CountUp } from '../ui/CountUp';
 import { PopTop } from '../ui/Pop';
 import { Left, Plus, Right, Tick } from '../ui/icons';
+import { startContests, useContests, type Contest } from '../store/contests';
 
 const shownWeek = (wk: number) => weekStart(clock().T) + wk * 7;
 function goWeek(wk: number) {
@@ -21,28 +21,20 @@ function goWeek(wk: number) {
   setUI({ wk, mmOff: (ws.getFullYear() - today.getFullYear()) * 12 + ws.getMonth() - today.getMonth() });
 }
 
-// ---------- upcoming contests: serve.py fetches them from the sites and keeps them for half an hour ----------
-interface Contest { plat: string; title: string; start: number; end: number; url: string; id: string; D: number; s: number }
-// null while loading; 'off' when there's no server to ask (a static host)
-const useContests = create<{ list: Contest[] | null | 'off' }>(() => ({ list: null }));
-let loading = false;
-async function loadContests() {
-  try {
-    const r = await fetch('api/contests', { cache: 'no-store' }); if (!r.ok) throw new Error(String(r.status));
-    const list = ((await r.json()).contests as Omit<Contest, 'id' | 'D' | 's'>[]).map((c, i) => { const d = new Date(c.start); return { ...c, id: 'c' + i, D: dayIdx(d), s: d.getHours() + d.getMinutes() / 60 }; });
-    useContests.setState({ list });
-  } catch { useContests.setState({ list: 'off' }); }
-}
-function startContests() { if (loading) return; loading = true; loadContests(); setInterval(loadContests, 30 * 60000); }
-
-function ContestCard({ c }: { c: Contest }) {
+// ---------- contests: store/contests.ts fetches them and puts the rounds in your calendar ----------
+/** a contest: when, how long, where from. One the app put in your calendar can be removed from it (and stays removed). */
+function ContestCard({ c, added }: { c: Contest; added?: boolean }) {
   const pf = PLATFORMS[c.plat], d = dateOf(c.D), mins = Math.round((c.end - c.start) / 60000);
+  const remove = () => {
+    update(dr => { const x = dr.events.find(y => y.id === c.id); if (x) (x.skip = x.skip || []).push(x.day); });
+    closePop(); toast(`Took ${c.title} off your calendar. It won’t be added again`);
+  };
   return <>
     <PopTop label="Contest" />
     <div className="ptitle as-text">{c.title}</div>
     <div className="prow">{DAY_LONG[d.getDay()]}, {d.getDate()} {MONTHS[d.getMonth()]} · {fmtTime(c.s)} · {mins >= 60 ? `${Math.floor(mins / 60)} h${mins % 60 ? ` ${mins % 60} min` : ''}` : `${mins} min`}</div>
-    <div className="psrc"><span className="plat" style={{ background: pf.bg, color: pf.fg }}>{c.plat}</span><span>From {pf.name}. The time follows the site if the contest moves.</span></div>
-    <div className="pfoot"><button type="button" className="pbtn" onClick={closePop}>Close</button><a className="pbtn dark" href={c.url} target="_blank" rel="noopener">Open on {pf.name}</a></div>
+    <div className="psrc"><span className="plat" style={{ background: pf.bg, color: pf.fg }}>{c.plat}</span><span>{added ? `From ${pf.name}, added to your calendar and your day by itself. The time follows the site if it moves.` : `From ${pf.name}. The time follows the site if the contest moves.`}</span></div>
+    <div className="pfoot">{added && <button type="button" className="pbtn redt" onClick={remove}>Remove</button>}<button type="button" className="pbtn" onClick={closePop}>Close</button><a className="pbtn dark" href={c.url} target="_blank" rel="noopener">Open on {pf.name}</a></div>
   </>;
 }
 
@@ -218,8 +210,8 @@ export function Calendar() {
   const coming = list.filter(c => c.start > Date.now()), nx = coming[0], np = nx && PLATFORMS[nx.plat], nd = nx && dateOf(nx.D);
   const h = nx ? (nx.start - Date.now()) / 3.6e6 : 0;
   const timedOn = (D: number) => [
-    ...eventsOn(d, D).map(e => ({ kind: 'event', id: e.id, s: e.s, cal: e.cal, label: e.short || e.title })),
-    ...d.oneoffs.filter(o => o.day === D && o.s != null).map(o => ({ kind: 'task', id: o.id, s: o.s!, cal: o.cal, label: o.title })),
+    ...eventsOn(d, D).map(e => ({ kind: 'event', id: e.id, s: e.s, cal: e.cal, label: e.short || e.title, ct: e.ct })),
+    ...d.oneoffs.filter(o => o.day === D && o.s != null).map(o => ({ kind: 'task', id: o.id, s: o.s!, cal: o.cal, label: o.title, ct: undefined })),
   ].sort((a, b) => a.s - b.s);
   const count = days.reduce((a, D) => a + timedOn(D).length, 0);
   const fresh = (id: string) => (calFresh && calFresh.includes(id) ? ' fresh' : '');
@@ -238,8 +230,16 @@ export function Calendar() {
             onDoubleClick={e => openPop(e.currentTarget, <RoutineCard key={r.id + D} id={r.id} D={D} />)} />
         ))}</div>
         {d.oneoffs.filter(o => o.day === D && o.s == null).map(o => evBtn('task', o.id, D, o.cal, '', o.title))}
-        {timedOn(D).map(x => evBtn(x.kind, x.id, D, x.cal as CalId, fmtTime(x.s), x.label))}
-        {list.filter(c => c.D === D).map(c => (
+        {timedOn(D).map(x => {
+          if (!x.ct) return evBtn(x.kind, x.id, D, x.cal as CalId, fmtTime(x.s), x.label);
+          // a contest the app added: its site's colours, a click opens it; ticking it in Today greys it out here too
+          const pf = PLATFORMS[x.ct.plat] || PLATFORMS.CF, c: Contest = { ...x.ct, id: x.id, title: x.label, D, s: x.s };
+          return (
+            <button key={x.id} className={`ev contest${statusOf(d, D, x.id) === 'done' ? ' done' : ''}`} data-contest={x.id} style={{ ['--ec' as string]: pf.bg, ['--ef' as string]: pf.fg }} title={x.label}
+              onClick={e => openPop(e.currentTarget, <ContestCard c={c} added />)}><small>{fmtTime(x.s)} · {x.ct.plat}</small><b>{x.label}</b></button>
+          );
+        })}
+        {list.filter(c => c.D === D && !d.events.some(e => e.id === c.id)).map(c => (
           <button key={c.id} className="ev contest" data-contest={c.id} style={{ ['--ec' as string]: PLATFORMS[c.plat].bg, ['--ef' as string]: PLATFORMS[c.plat].fg }} title={c.title}
             onClick={e => openPop(e.currentTarget, <ContestCard c={c} />)}><small>{fmtTime(c.s)} · {c.plat}</small><b>{c.title}</b></button>
         ))}

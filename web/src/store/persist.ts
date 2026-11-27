@@ -67,8 +67,8 @@ export function mirror(key: string, value: string) {
   mirrorTimers[key] = window.setTimeout(() => push(key, value), 600);
 }
 
-/** load what this browser has, then keep saving and keep in step with other windows */
-export function restore() {
+/** load what this browser has, then keep saving and keep in step with other windows; resolves once the server has been asked */
+export function restore(): Promise<void> {
   const mine = local.get(KEY);
   if (mine) apply(mine); else last = body(useData.getState().d);
   addEventListener('storage', e => { if (e.key === KEY && e.newValue) apply(e.newValue); });
@@ -88,6 +88,7 @@ export function restore() {
     if (back && !sessionStorage.getItem('tessera.restored')) { sessionStorage.setItem('tessera.restored', '1'); location.reload(); }
   });
   setInterval(() => { if (document.visibilityState === 'visible') pull(); }, 2500);
+  return first.then(() => {});
 }
 
 // ---------- backups: a file you keep, and the daily copies on this computer ----------

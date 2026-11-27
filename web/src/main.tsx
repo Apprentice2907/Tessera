@@ -5,6 +5,7 @@ import { App } from './App';
 import { restore } from './store/persist';
 import { keepHoursInStep } from './store/rules';
 import { tickClock } from './store/clock';
+import { startContests } from './store/contests';
 import './styles/app.css';
 import './styles/home.css';
 import './styles/today.css';
@@ -15,7 +16,8 @@ import './styles/wall.css';
 import './styles/review.css';
 import './styles/motion.css';
 
-restore();
+// coding contests go into the calendar by themselves, once the saved state is in
+restore().then(startContests);
 const sync = keepHoursInStep();
 // the clock: every page turns to the new day at midnight; pages that show the time follow the minute
 const check = () => { if (tickClock()) sync(); };

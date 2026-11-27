@@ -10,6 +10,7 @@ import { useData, update } from './store/data';
 import { save, restore } from './store/persist';
 import { keepHoursInStep, syncHours } from './store/rules';
 import { tickClock, useClock } from './store/clock';
+import { startContests } from './store/contests';
 import { calColor, startOf, statusOf, tasksForDay } from './lib/data';
 import { DAY_NAMES, MONTHS, fmtTime } from './lib/dates';
 import { sortTask, sortTime } from './lib/sort';
@@ -138,7 +139,7 @@ function useDeskDrag(card: React.RefObject<HTMLElement | null>) {
 
 // the same saved state as the app; when the app (in another window) changes something, the widget redraws.
 // The desktop widget stays open for days: at midnight it turns to the new day.
-restore();
+restore().then(startContests);
 const sync = keepHoursInStep();
 setInterval(() => { if (tickClock()) sync(); }, 30000);
 createRoot(document.getElementById('root')!).render(<MotionConfig reducedMotion="user"><Widget /></MotionConfig>);
