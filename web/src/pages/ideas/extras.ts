@@ -135,8 +135,14 @@ export function addLink(url: string, at?: { x: number; y: number } | null) {
   act('Add link', () => { o = add({ type: 'link', x: c.x - 150, y: c.y - 45, w: 300, h: 90, url, title }); });
   if (o) select([(o as Obj).id]);
 }
-/** a link card's address is typed by someone: it opens in a new tab, but never as a script */
-export const openLink = (url?: string) => { if (url && !/^\s*(javascript|data|vbscript):/i.test(url)) window.open(url, '_blank', 'noopener'); };
+/** a link card's address is typed by someone: it opens in a new tab, but never as a script. It goes out as a click on
+ *  a plain link, the way every link in Tessera does, so the desktop app can send it to your browser instead. */
+export function openLink(url?: string) {
+  if (!url || /^\s*(javascript|data|vbscript):/i.test(url)) return;
+  const a = document.createElement('a');
+  a.href = url; a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); a.remove();
+}
 
 // ---------- export: PNG, SVG and PDF, drawn from the board data ----------
 const FS = { s: 14, m: 20, l: 28, xl: 40 };
