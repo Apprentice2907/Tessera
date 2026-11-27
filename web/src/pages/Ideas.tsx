@@ -1,4 +1,4 @@
-// Tessera · Ideas: the whiteboard (board.html, the classic page) inside the page, edge to edge. The page switcher hides
+// Tessera · Ideas: the whiteboard (public/board.html, a plain-JS page) inside the page, edge to edge. The page switcher hides
 // here; the board brings its own way back (its first toolbar button, or keys 1–7).
 export function Ideas() {
   return (

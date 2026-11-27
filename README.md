@@ -39,8 +39,7 @@ python mockup/serve.py
 
 and open http://localhost:5178. Keys `1`–`7` switch pages; `U` logs a project update from anywhere.
 
-`serve.py` serves the React build in `web/dist` when there is one, and the classic app in `mockup/` when there isn't
-(`TESSERA_CLASSIC=1` always serves the classic one). Both read and write the same data.
+`serve.py` serves the build in `web/dist`; until there is one, it shows a page saying how to make it.
 
 ### Working on it
 
@@ -56,8 +55,8 @@ cd web && npm run dev
 
 - **Where it lives:** in the browser, and with `serve.py` running, on this computer too (`mockup/.data/store/`, one
   file per part). The app and the desktop widget share it, so a task ticked in one is ticked in the other.
-- **The format:** the same keys as always (`tessera.state`, `tessera.walls`, `tessera.wb.*`), so data and backups made
-  by the classic app load as they are.
+- **The format:** the keys `tessera.state`, `tessera.walls` and `tessera.wb.*`, the same as the first (plain HTML)
+  version of Tessera, so its data and backups load as they are.
 - **Backups:** the server copies everything to `mockup/.data/backups/` before the first change of each day and keeps
   the last 60. "Back up now" makes one on the spot.
 - **A copy to keep:** "Download a copy" saves one file with everything. "Restore from a file" puts it back, after
@@ -89,7 +88,7 @@ Vite dev server against it.
 | Today | The day's routines, events and tasks. Drag to In progress or Done, star, right-click to re-file. Also logs project updates. |
 | Hours | Today hour by hour, painted by category, and the month as a heat map. |
 | Calendar | The week, the month, routines as dots, and coding contests. Double-click to add or edit. |
-| Ideas | The whiteboard (`board.html`), full screen. |
+| Ideas | The whiteboard (`web/public/board.html`), full screen. |
 | Wall | Wire-grid memory walls, one per trip, festival or season. |
 | Review | The archive. Monthly folders open a file each month and fill it in from one Hours category; projects folders hold a file per project, with a plan and a page a week. |
 
@@ -101,14 +100,14 @@ Review counts each monthly folder's days and hours from Hours.
 - `widget.html` is Today's list on its own: keep it open, add it to a phone's home screen, or embed it.
 - `mockup/desktop/widget.pyw` puts it on the Windows desktop (`widget.html?desk`): a borderless card behind your
   windows that you can drag and resize. It needs `pip install pywebview`, and starts the server if it isn't running.
-  A shortcut to it in the Startup folder starts it at sign-in. It shows whichever app `serve.py` serves.
+  A shortcut to it in the Startup folder starts it at sign-in.
 
 ## How the code is laid out
 
 ```
 web/                    the app (React + TypeScript + Vite)
   index.html, widget.html             the two entry pages
-  vite.config.ts                      the build; it copies the whiteboard in from mockup/
+  vite.config.ts                      the build
   src/
     main.tsx, widget.tsx              entries: load the saved state, keep Hours in step, start the clock, draw
     App.tsx                           the shell: routes, page switcher, keys, page transitions
@@ -118,10 +117,10 @@ web/                    the app (React + TypeScript + Vite)
                 clock.ts (today and the time), ui.ts (toast, the pop-up card, what pages remember)
     ui/         motion.tsx (Bento, Tile, Copy), CountUp, Strip (hour strip), Pop (pop-up card, toast), DataCard, icons
     pages/      Home, Today, Hours, Calendar, Ideas; wall/ and review/ are larger and have their own folders
-    styles/     app.css (design system: tokens, grid, tiles) and one stylesheet per page, as in the classic app
-  public/assets/                      icons and the widget's web manifest
-mockup/                 the classic app (plain HTML/CSS/JS), the server and the desktop widget
-  serve.py              local server: saved state, daily backups, contests; serves web/dist when it's built
-  board.html, board/    the whiteboard behind Ideas (shared with the React app)
+    styles/     app.css (design system: tokens, grid, tiles) and one stylesheet per page
+  public/       assets/ (icons, the widget's web manifest); board.html and board/ (the whiteboard, plain JS)
+mockup/                 the local side: the server and the desktop widget (the name is kept so your data folder,
+                        mockup/.data, and the Startup shortcut keep working)
+  serve.py              local server: saved state, daily backups, contests; serves web/dist
   desktop/              the Windows desktop widget
 ```

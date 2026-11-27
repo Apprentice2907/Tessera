@@ -1,7 +1,7 @@
 """Tessera: the to-do widget on the Windows desktop.
 
 A small borderless card at the bottom left of the desktop (under the wallpaper's quote), behind your other
-windows, with no taskbar button. It shows widget.html?desk (widget/widget.js) from the local Tessera server, which it starts if it
+windows, with no taskbar button. It shows widget.html?desk (web/src/widget.tsx) from the local Tessera server, which it starts if it
 isn't running already, so it shares the app's tasks: tick something here and it's ticked in the browser, and the
 other way round.
 

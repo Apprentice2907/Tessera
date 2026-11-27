@@ -2,9 +2,8 @@
 
     python serve.py          then open http://localhost:5178
 
-It serves the app with caching turned off: the React build in ../web/dist when there is one (`npm run build` in web/),
-otherwise the classic app in this folder (TESSERA_CLASSIC=1 always serves the classic one). Either way it keeps your
-data on this computer, in the same place and the same format:
+It serves the app (the React build in ../web/dist: `npm install` and `npm run build` in web/) with caching turned off,
+and keeps your data on this computer:
 
   /api/state      one JSON file per key in .data/store/: the app's state, the walls, the ideas boards
   /api/backups    a copy of everything, made before the first change of each day (and whenever you ask);
@@ -32,15 +31,11 @@ BACKUPS = os.path.join(DATA, 'backups')
 KEEP = 60                                   # backups kept
 KEY = re.compile(r'^tessera\.[a-z0-9._-]{1,80}$')
 LIMIT = 64 * 1024 * 1024                    # walls carry photos, so a key can be a few MB
-WEB = os.path.join(os.path.dirname(ROOT), 'web', 'dist')   # the React app, once built
+WEB = os.path.join(os.path.dirname(ROOT), 'web', 'dist')   # the app, as `npm run build` in web/ makes it
 _lock = threading.Lock()
-
-
-def site():
-    """The folder the app is served from: the React build if there is one, else the classic app here."""
-    if os.environ.get('TESSERA_CLASSIC') != '1' and os.path.isfile(os.path.join(WEB, 'index.html')):
-        return WEB
-    return ROOT
+NOT_BUILT = (b'<!doctype html><meta charset="utf-8"><title>Tessera</title><body style="font:16px system-ui;margin:40px">'
+             b'<b>Tessera isn\'t built yet.</b><p>In the web folder run <code>npm install</code>, then <code>npm run build</code>, '
+             b'and reload. Your data is safe in mockup/.data.</p>')
 
 
 # ---------- the store: one file per key ----------
@@ -199,6 +194,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 return self._json(200, {'backups': backups(), 'keep': KEEP, 'folder': BACKUPS})
         if route == '/api/contests':
             return self._json(200, {'contests': contests()})
+        if not os.path.isfile(os.path.join(WEB, 'index.html')):
+            self.send_response(503)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Length', str(len(NOT_BUILT)))
+            self.end_headers()
+            return self.wfile.write(NOT_BUILT)
         if route.startswith('/.data') or route.endswith(('.py', '.pyw')):
             return self._json(404, {'error': 'not found'})  # your data and the server code are never served
         return super().do_GET()
@@ -238,7 +239,7 @@ class Server(http.server.ThreadingHTTPServer):
 
 
 def make_server(port=PORT):
-    return Server(('127.0.0.1', port), functools.partial(Handler, directory=site()))
+    return Server(('127.0.0.1', port), functools.partial(Handler, directory=WEB))
 
 
 if __name__ == '__main__':
