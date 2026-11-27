@@ -1,11 +1,11 @@
 // Tessera · upcoming contests from Codeforces, CodeChef and LeetCode. serve.py fetches them from the sites and keeps them
 // for half an hour; the app asks again every half hour.
 //
-// Every round of up to six hours goes into your calendar by itself, as an ordinary event (category Work), so it shows up
-// in Today, Next up, Home and the widget like anything else you planned, and finishing it logs its hours as Coding.
+// Only contests: practice rounds, test rounds and multi-day challenges are left out everywhere.
+// Every contest goes into your calendar by itself, as an ordinary event (category Work), so it shows up in Today,
+// Next up, Home and the widget like anything else you planned, and finishing it logs its hours as Coding.
 // Its id comes from the contest's address ("ct-CF-2292"), so it is added once. If the site moves it, the event follows,
-// unless you changed its time yourself. Removing it from the calendar keeps it removed. Multi-day contests (practice
-// weeks, online challenges) stay in the Contests tile and as chips on the calendar, not as tasks.
+// unless you changed its time yourself. Removing it from the calendar keeps it removed.
 import { create } from 'zustand';
 import { update } from './data';
 import { dayIdx } from '../lib/dates';
@@ -16,6 +16,8 @@ export interface Contest { plat: string; title: string; start: number; end: numb
 export const useContests = create<{ list: Contest[] | null | 'off' }>(() => ({ list: null }));
 
 const LONGEST = 6 * 3.6e6; // longer than this is a practice week or a challenge, not a round you sit down for
+/** a contest you sit down for, not a practice or test round, and not a challenge that runs for days */
+const isContest = (c: { title: string; start: number; end: number }) => c.end - c.start <= LONGEST && !/\b(practice|testing round|test round)\b/i.test(c.title);
 export const contestId = (c: { plat: string; url: string }) => 'ct-' + c.plat + '-' + c.url.replace(/\/+$/, '').split('/').pop()!.replace(/[^\w-]/g, '');
 const hourOf = (ms: number) => { const d = new Date(ms); return d.getHours() + d.getMinutes() / 60; };
 
@@ -37,7 +39,7 @@ function addToCalendar(list: Contest[]) {
 async function load() {
   try {
     const r = await fetch('api/contests', { cache: 'no-store' }); if (!r.ok) throw new Error(String(r.status));
-    const list: Contest[] = ((await r.json()).contests as Omit<Contest, 'id' | 'D' | 's'>[]).map(c => ({ ...c, id: contestId(c), D: dayIdx(new Date(c.start)), s: hourOf(c.start) }));
+    const list: Contest[] = ((await r.json()).contests as Omit<Contest, 'id' | 'D' | 's'>[]).filter(isContest).map(c => ({ ...c, id: contestId(c), D: dayIdx(new Date(c.start)), s: hourOf(c.start) }));
     useContests.setState({ list });
     addToCalendar(list);
   } catch { useContests.setState({ list: 'off' }); }

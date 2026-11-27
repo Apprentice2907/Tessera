@@ -70,8 +70,10 @@ Without the server (any static host) the app still works and saves to the browse
 
 ## Contests
 
-With the server running, the Calendar shows upcoming contests from Codeforces, CodeChef and LeetCode. They're
-fetched from the sites' public APIs and kept for half an hour.
+With the server running, upcoming contests from Codeforces, CodeChef and LeetCode are fetched from the sites every half
+hour and go into the calendar by themselves, so they show up in Today, Next up and the widget; ticking one off logs its
+hours as Coding. Only contests: practice rounds, test rounds and multi-day challenges are left out. Removing one from
+its card keeps it off the calendar.
 
 ## Testing
 
