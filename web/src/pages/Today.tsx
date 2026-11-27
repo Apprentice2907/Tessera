@@ -9,6 +9,8 @@ import { useData, update } from '../store/data';
 import { useClock } from '../store/clock';
 import { setUI, toast, ui, useUI, reducedMotion } from '../store/ui';
 import { logUpdate, recentProjects, syncHours } from '../store/rules';
+import { inApp } from '../store/backend';
+import { invoke } from '@tauri-apps/api/core';
 import { CALS, calColor, eventsOn, startOf, statusOf, tasksForDay } from '../lib/data';
 import { DAY_LONG, DAY_NAMES, MONTHS, dateOf, fmtTime } from '../lib/dates';
 import { SORT_NAMES, SORT_ORDER, sortTask, sortTeach, sortTime } from '../lib/sort';
@@ -189,7 +191,9 @@ export function Today() {
           <div className="card-head">
             <strong>{DAY_NAMES[date.getDay()]} {date.getDate()} {MONTHS[date.getMonth()]}</strong>
             <small className="left">{todo.length ? `${todo.length} to do` : 'all done'}</small>
-            {off === 0 && <a className="wlink" href="widget.html" target="_blank" rel="noopener" title="Today’s list as a small widget: keep it open, add it to your home screen, or embed it">Widget</a>}
+            {off === 0 && (inApp
+              ? <button className="wlink" title="Today’s list on your desktop, behind your windows" onClick={() => { invoke('set_widget', { on: true }); toast('The widget is on your desktop'); }}>Widget</button>
+              : <a className="wlink" href="widget.html" target="_blank" rel="noopener" title="Today’s list as a small widget: keep it open, add it to your home screen, or embed it">Widget</a>)}
           </div>
           <motion.div layoutScroll className={'rows' + (more ? ' more' : '')} ref={rows} onScroll={fade}>
             <AnimatePresence initial={false} mode="popLayout">{listBody}</AnimatePresence>
@@ -208,7 +212,7 @@ export function Today() {
         <div className="copy"><span className="label">Next up</span></div>
         {next ? <>
           <div className="stat" style={{ fontSize: 'clamp(40px, 8.5vh, 70px)' }}>{fmtTime(next.s)}</div>
-          <div className="aside">{next.short || next.title}<small>{evs[1] ? 'then ' + (evs[1].short || evs[1].title) : 'last one today'}</small></div>
+          <div className="aside next-what">{next.short || next.title}<small>{evs[1] ? 'then ' + (evs[1].short || evs[1].title) : 'last one today'}</small></div>
         </> : <div className="aside">Nothing else today</div>}
       </Tile>
       <Tile area="done" g="g-green" className="drop" data-drop="done" data-drop-label="Finish it">

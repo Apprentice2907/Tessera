@@ -2,7 +2,8 @@
 // so ticking something here ticks it in Today (and fills its hours in Hours), and the other way round.
 //   widget.html        a small page: keep it open, add it to a phone's home screen, or embed it
 //   widget.html?bare   no page background, for embedding
-//   widget.html?desk   the Windows desktop widget (mockup/desktop/widget.pyw): drag any empty part to move it, the corner to resize it
+//   widget.html?desk   the desktop widget: drag any empty part to move it, the corner to resize it. In the desktop app it's the
+//                      app's second window (src-tauri); the older Python widget (mockup/desktop/widget.pyw) opens it with ?desk
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { createRoot } from 'react-dom/client';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
@@ -11,6 +12,9 @@ import { save, restore } from './store/persist';
 import { keepHoursInStep, syncHours } from './store/rules';
 import { tickClock, useClock } from './store/clock';
 import { startContests } from './store/contests';
+import { inApp, openLinksOutside } from './store/backend';
+import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { calColor, startOf, statusOf, tasksForDay } from './lib/data';
 import { DAY_NAMES, MONTHS, fmtTime } from './lib/dates';
 import { sortTask, sortTime } from './lib/sort';
@@ -21,13 +25,18 @@ import './styles/app.css';
 import './styles/widget.css';
 import './styles/motion.css';
 
-const Q = new URLSearchParams(location.search), DESK = Q.has('desk');
+const Q = new URLSearchParams(location.search), APPWIDGET = inApp && getCurrentWindow().label === 'widget', DESK = Q.has('desk') || APPWIDGET;
 document.body.classList.toggle('bare', Q.has('bare') || DESK);
 document.body.classList.toggle('desk', DESK);
-// on the desktop, the Python side moves, resizes and closes the window, opens the app,
+// the older Python widget: its side moves, resizes and closes the window, opens the app,
 // and tucks the widget back behind other windows when you click away
 interface DeskApi { open_app(page: string): void; close(): void; sink(): void; move_to(x: number, y: number): void; resize(w: number, h: number): void; settle_down(): void }
-const desk = () => (window as unknown as { pywebview?: { api?: DeskApi } }).pywebview?.api;
+const py = () => (window as unknown as { pywebview?: { api?: DeskApi } }).pywebview?.api;
+// in the desktop app, the window sits behind the others by itself, and the system moves and resizes it
+const desk = {
+  open: () => (APPWIDGET ? invoke('open_main', { page: 'today' }) : py()?.open_app('today')),
+  close: () => (APPWIDGET ? invoke('set_widget', { on: false }) : py()?.close()),
+};
 
 const slide = { layout: true, initial: { opacity: 0, y: -6 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, transition: { duration: 0.15 } }, transition: { duration: 0.3, ease: EASE } } as const;
 
@@ -72,8 +81,8 @@ function Widget() {
       <div className="copy"><b>Today.</b> <span>Everything due, in one list.</span></div>
       {DESK ? <>
         <div className="deskbar">
-          <button className="open" onClick={() => desk()?.open_app('today')}>Open Tessera</button>
-          <button className="x" aria-label="Close the widget" title="Close" onClick={() => desk()?.close()}><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 3l6 6M9 3 3 9" /></svg></button>
+          <button className="open" onClick={() => desk.open()}>Open Tessera</button>
+          <button className="x" aria-label="Close the widget" title="Close" onClick={() => desk.close()}><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 3l6 6M9 3 3 9" /></svg></button>
         </div>
         <div className="grip" data-grip title="Drag to resize" aria-hidden="true"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M10.5 4.5l-6 6M10.5 8.5l-2 2" /></svg></div>
       </> : <a className="open" href="./#/today" target="_top">Open Tessera</a>}
@@ -99,16 +108,27 @@ function Widget() {
 function useDeskDrag(card: React.RefObject<HTMLElement | null>) {
   useEffect(() => {
     const W = card.current; if (!DESK || !W) return;
-    const blur = () => desk()?.sink();
-    addEventListener('blur', blur);
     const NOT_DRAG = 'button, input, a, textarea, select, .chk, [data-grip]';
+    if (APPWIDGET) {
+      const win = getCurrentWindow();
+      const down = (e: PointerEvent) => {
+        if (e.button !== 0) return;
+        const t = e.target as Element;
+        if (t.closest('[data-grip]')) { e.preventDefault(); win.startResizeDragging('SouthEast'); }
+        else if (!t.closest(NOT_DRAG)) win.startDragging();
+      };
+      W.addEventListener('pointerdown', down);
+      return () => W.removeEventListener('pointerdown', down);
+    }
+    const blur = () => py()?.sink();
+    addEventListener('blur', blur);
     const MIN_W = 250, MIN_H = 270, MAX_W = 760, MAX_H = 1100;
     type Op = { kind: 'size'; sx: number; sy: number; w: number; h: number; r: number; next?: [string, number, number] | null } | { kind: 'move'; ox: number; oy: number; sx: number; sy: number; r: number; moved: boolean; next?: [string, number, number] | null };
     let op: Op | null = null, frame = 0;
     const send = () => {
       frame = 0; if (!op || !op.next) return;
       const [kind, a, b] = op.next; op.next = null;
-      if (kind === 'move') desk()?.move_to(a, b); else desk()?.resize(a, b);
+      if (kind === 'move') py()?.move_to(a, b); else py()?.resize(a, b);
     };
     const down = (e: PointerEvent) => {
       if (e.button !== 0) return;
@@ -131,7 +151,7 @@ function useDeskDrag(card: React.RefObject<HTMLElement | null>) {
       }
       if (!frame) frame = requestAnimationFrame(send);
     };
-    const end = () => { if (!op) return; send(); op = null; document.body.classList.remove('moving'); desk()?.settle_down(); };
+    const end = () => { if (!op) return; send(); op = null; document.body.classList.remove('moving'); py()?.settle_down(); };
     W.addEventListener('pointerdown', down); W.addEventListener('pointermove', move); W.addEventListener('pointerup', end); W.addEventListener('pointercancel', end);
     return () => { removeEventListener('blur', blur); W.removeEventListener('pointerdown', down); W.removeEventListener('pointermove', move); W.removeEventListener('pointerup', end); W.removeEventListener('pointercancel', end); };
   }, [card]);
@@ -139,6 +159,7 @@ function useDeskDrag(card: React.RefObject<HTMLElement | null>) {
 
 // the same saved state as the app; when the app (in another window) changes something, the widget redraws.
 // The desktop widget stays open for days: at midnight it turns to the new day.
+openLinksOutside();
 restore().then(startContests);
 const sync = keepHoursInStep();
 setInterval(() => { if (tickClock()) sync(); }, 30000);

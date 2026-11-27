@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { PopTop } from './Pop';
 import { closePop, openPop, toast } from '../store/ui';
 import { backupNow, backups, download, info, restoreFile } from '../store/persist';
+import { inApp } from '../store/backend';
 import { clock } from '../store/clock';
 import { dayIdx, fmtTime, plural, shortDate } from '../lib/dates';
 
@@ -28,7 +29,7 @@ function DataCard() {
   return (
     <>
       <PopTop label="Your data" />
-      <div className="dline"><b>Saved</b><span>{remote ? 'In this browser and on this computer' : 'In this browser only. Run serve.py to keep a copy on this computer too'}{at ? `, last at ${fmtTime(at.getHours() + at.getMinutes() / 60)}` : ''}.</span></div>
+      <div className="dline"><b>Saved</b><span>{inApp ? 'On this computer, in Tessera’s own folder' : remote ? 'In this browser and on this computer' : 'In this browser only. Run serve.py to keep a copy on this computer too'}{at ? `, last at ${fmtTime(at.getHours() + at.getMinutes() / 60)}` : ''}.</span></div>
       <div className="dline"><b>Backups</b><span>{line}</span></div>
       <input type="file" accept="application/json,.json" hidden ref={pick} onChange={e => setFile(e.target.files?.[0] || null)} />
       {file ? (

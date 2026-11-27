@@ -110,7 +110,7 @@ export function Home() {
         {next ? <>
           <div className="copy home-next"><span className="label">Next up</span><span>in {inHM(next.s - nowH)}</span></div>
           <div className="stat" style={{ fontSize: 'clamp(44px, 9.5vh, 76px)' }}>{fmtTime(next.s)}</div>
-          <div className="aside">{next.short || next.title}<small>{evs[1] ? `then ${evs[1].short || evs[1].title}, ${fmtTime(evs[1].s)}` : 'last one today'}</small></div>
+          <div className="aside next-what">{next.short || next.title}<small>{evs[1] ? `then ${evs[1].short || evs[1].title}, ${fmtTime(evs[1].s)}` : 'last one today'}</small></div>
         </> : <Copy b="Nothing else today." s="The calendar is clear." />}
       </LinkTile>
       <LinkTile href="#/hours" area="hours" g="g-paper" className="wide">

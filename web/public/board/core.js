@@ -45,12 +45,15 @@ WB.PEOPLE = { Prince: '#7B61FF', Riya: '#FF4F96', Aman: '#1F7BFF', Sara: '#22A55
 // boards are kept in this browser, and a copy goes to this computer when Tessera runs from serve.py (core/store.js
 // brings them back if the browser loses them). Versions stay in the browser only.
 const mirrorTimers = {};
-// serve.py only listens on this computer: a copy opened from anywhere else (the one on Vercel) keeps boards in the browser only
+// serve.py only listens on this computer: a copy opened from anywhere else (the one on Vercel) keeps boards in the browser only.
+// In the desktop app the board is a page inside the app's window, and saves through the app.
 const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+const APP = window.__TAURI_INTERNALS__ || (window.parent !== window && window.parent.__TAURI_INTERNALS__) || null;
 function mirror(k, text) {
-  if (!LOCAL || !/^tessera\.wb\.(index|folders|b\.)/.test(k)) return;
+  if (!(LOCAL || APP) || !/^tessera\.wb\.(index|folders|b\.)/.test(k)) return;
   clearTimeout(mirrorTimers[k]);
-  mirrorTimers[k] = setTimeout(() => fetch('api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: k, value: text }) }).catch(() => {}), 600);
+  mirrorTimers[k] = setTimeout(() => (APP ? APP.invoke('state_set', { key: k, value: text })
+    : fetch('api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: k, value: text }) })).catch(() => {}), 600);
 }
 const LS = WB.LS = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },

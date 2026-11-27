@@ -8,8 +8,14 @@ Tessera is a personal life OS: today's tasks, where the hours went, a calendar, 
 monthly archive that fills itself in from all of them. Every page is one bento grid of tiles. It runs on the real
 date and turns to the new day at midnight.
 
+It's a desktop app you install, like Microsoft To Do: a window for the app, and a small to-do card on your desktop that
+sits behind your other windows. Your data stays on your computer.
+
 ## Stack
 
+- **Tauri 2** makes it a desktop app (`web/src-tauri/`, Rust): a small installer that uses the Edge engine already in
+  Windows. Its Rust side keeps your data in files, makes the daily backups and fetches the contests. The same code can
+  later build Android and iOS apps.
 - **React 19 + TypeScript**, built with **Vite** (`web/`).
 - **Zustand** holds the state; changes run through **Immer** drafts, so the saved format stays exactly what it was.
 - **React Router** (hash routes, so `#today` and `#review/<id>` links still work).
@@ -18,47 +24,51 @@ date and turns to the new day at midnight.
 - **GSAP** for timelines and count-ups: big numbers count up, the hour strip fills in from the left, the month's squares
   light up in order. The count-up follows React Bits' Count Up, written on GSAP.
 - Everything respects `prefers-reduced-motion`.
-- A small **Python** standard-library server (`mockup/serve.py`) keeps your data on this computer, makes daily backups
-  and fetches coding contests. No database.
+- No database. In a browser instead of the app, a small **Python** server (`mockup/serve.py`) does what the app's Rust
+  side does, with the same API.
 
-## Run it
+## Install it
 
-Once, and after pulling changes:
+Run the installer, `Tessera_<version>_x64-setup.exe`. It installs for you alone (no admin rights) and adds Tessera to the
+Start menu. The first time it opens, it turns on the desktop widget and starts with Windows; both can be turned off
+from its tray icon, which also opens the app and quits it. Keys `1`–`7` switch pages; `U` logs a project update from
+anywhere.
+
+Without a paid code-signing certificate, Windows may say the installer is from an unknown publisher the first time;
+"More info", then "Run anyway".
+
+## Build it
+
+Needs Node.js, Rust and the Microsoft C++ build tools (Visual Studio with "Desktop development with C++").
 
 ```
 cd web
 npm install
-npm run build
+npm run app:build
 ```
 
-Then:
+The installer lands in `web/src-tauri/target/release/bundle/nsis/`. `npm run app` runs the app with hot reload.
+`TESSERA_DATA=<folder>` runs it on another data folder, so testing never touches your own.
+
+### In a browser instead
 
 ```
+cd web && npm run build
 python mockup/serve.py
 ```
 
-and open http://localhost:5178. Keys `1`–`7` switch pages; `U` logs a project update from anywhere.
-
-`serve.py` serves the build in `web/dist`; until there is one, it shows a page saying how to make it.
-
-### Working on it
-
-```
-python mockup/serve.py 5199 mockup/.data/test
-cd web && npm run dev
-```
-
-`npm run dev` opens the app on http://localhost:5173 with hot reload, and sends `/api` to the test server on 5199
-(set `TESSERA_SERVER` to point it somewhere else). `npm run typecheck` runs TypeScript on its own.
+and open http://localhost:5178. For working on the pages, `python mockup/serve.py 5199 mockup/.data/test` and
+`npm run dev` (http://localhost:5173, hot reload, `/api` sent to the test server on 5199; `TESSERA_SERVER` points it
+somewhere else). `npm run typecheck` runs TypeScript on its own.
 
 ## Your data
 
-- **Where it lives:** in the browser, and with `serve.py` running, on this computer too (`mockup/.data/store/`, one
-  file per part). The app and the desktop widget share it, so a task ticked in one is ticked in the other.
+- **Where it lives:** in the app's folder, `%APPDATA%\app.tessera.desktop\` (`store/`, one file per part, and
+  `backups/`). The app and its desktop widget share it, so a task ticked in one is ticked in the other. In a browser
+  with `serve.py`, it's `mockup/.data/` instead, in the same format.
 - **The format:** the keys `tessera.state`, `tessera.walls` and `tessera.wb.*`, the same as the first (plain HTML)
   version of Tessera, so its data and backups load as they are.
-- **Backups:** the server copies everything to `mockup/.data/backups/` before the first change of each day and keeps
-  the last 60. "Back up now" makes one on the spot.
+- **Backups:** everything is copied to `backups/` before the first change of each day, and the last 60 are kept. "Back up now" makes one on the spot.
 - **A copy to keep:** "Download a copy" saves one file with everything. "Restore from a file" puts it back, after
   backing up what's there. Both are on the Home badge and on Review's "Backups" button.
 - **If the browser forgets:** cleared browser data, or a new browser, gets everything back from the server on the

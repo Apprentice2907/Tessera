@@ -6,6 +6,7 @@
 import { useData, body, merge } from './data';
 import { toast } from './ui';
 import { dkey } from '../lib/dates';
+import { backend, hasStore } from './backend';
 
 export const KEY = 'tessera.state';
 const MIRRORED = /^tessera\.(walls|wb\.(index|folders|b\.))/;
@@ -35,17 +36,14 @@ function apply(text: string) {
   last = body(useData.getState().d);
 }
 
-// ---------- the copy on this computer (serve.py); on a plain static host there's no server, and this does nothing ----------
-// serve.py only ever listens on this computer, so a copy opened from anywhere else (the one on Vercel) doesn't ask it
-const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-const post =(key: string, value: string | null) => fetch('api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, value }), keepalive: !value || value.length < 60000 });
-function push(key: string, value: string | null) { if (remote) post(key, value).catch(() => {}); }
-async function getJSON<T>(url: string): Promise<T> { const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) throw new Error(String(r.status)); return r.json(); }
+// ---------- the copy on this computer: the desktop app's own folder, or serve.py (store/backend.ts) ----------
+// on a plain static host there's neither, and this does nothing
+function push(key: string, value: string | null) { if (remote) backend.set(key, value).catch(() => {}); }
 // another window saved something newer: take it
 async function pull() {
-  if (!LOCAL) return;
+  if (!hasStore) return;
   let theirs: string | null;
-  try { theirs = (await getJSON<{ value: string | null }>('api/state?key=' + KEY)).value; } catch { return; }
+  try { theirs = await backend.get(KEY); } catch { return; }
   remote = true;
   const mine = local.get(KEY);
   if (!theirs) { if (mine) push(KEY, mine); return; }          // the server has nothing yet: give it ours
@@ -56,10 +54,10 @@ async function pull() {
 // and whatever the server doesn't have yet goes to it. Returns how many keys came back.
 async function syncMirrored() {
   let keys: Record<string, string | null>;
-  try { keys = (await getJSON<{ keys: Record<string, string | null> }>('api/state?prefix=tessera.')).keys; } catch { return 0; }
+  try { keys = await backend.all('tessera.'); } catch { return 0; }
   let back = 0;
   Object.entries(keys).forEach(([k, v]) => { if (k !== KEY && MIRRORED.test(k) && v != null && local.get(k) == null && local.set(k, v)) back++; });
-  for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && MIRRORED.test(k) && !(k in keys)) post(k, local.get(k)).catch(() => {}); }
+  for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && MIRRORED.test(k) && !(k in keys)) backend.set(k, local.get(k)).catch(() => {}); }
   return back;
 }
 // a page that keeps its own key in this browser (the Wall) calls this after saving it
@@ -97,7 +95,7 @@ export function restore(): Promise<void> {
 // ---------- backups: a file you keep, and the daily copies on this computer ----------
 async function everything() {
   const keys: Record<string, string | null> = {};
-  if (remote) { try { Object.assign(keys, (await getJSON<{ keys: Record<string, string | null> }>('api/state?prefix=tessera.')).keys); } catch { /* this browser's copy will do */ } }
+  if (remote) { try { Object.assign(keys, await backend.all('tessera.')); } catch { /* this browser's copy will do */ } }
   save();
   for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && (k === KEY || MIRRORED.test(k))) keys[k] = local.get(k); }
   return keys;
@@ -118,17 +116,15 @@ export async function restoreFile(file: File) {
   const keys = Object.entries(data.keys).filter((e): e is [string, string] => (e[0] === KEY || MIRRORED.test(e[0])) && typeof e[1] === 'string');
   if (!keys.some(([k]) => k === KEY)) throw new Error('That backup has no saved state in it');
   ready = false; clearTimeout(timer);
-  if (remote) await fetch('api/backups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ label: 'before-restore' }) }).catch(() => {});
+  if (remote) await backend.backupNow('before-restore').catch(() => {});
   const stamped = ([k, v]: [string, string]): [string, string] => [k, k === KEY ? v.replace(/"at":\d+}$/, `"at":${Date.now()}}`) : v]; // newest, so every window takes it
-  for (const [k, v] of keys.map(stamped)) { local.set(k, v); if (remote) await post(k, v).catch(() => {}); }
+  for (const [k, v] of keys.map(stamped)) { local.set(k, v); if (remote) await backend.set(k, v).catch(() => {}); }
   sessionStorage.removeItem('tessera.restored');
   location.reload();
 }
-export interface BackupList { backups: { name: string; keys: number; bytes: number }[]; keep: number; folder: string }
-export async function backups() { return remote ? getJSON<BackupList>('api/backups') : null; }
+export async function backups() { return remote ? backend.backups() : null; }
 export async function backupNow() {
   save();
-  const r = await fetch('api/backups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-  return (await r.json()).name as string;
+  return backend.backupNow();
 }
 export const info = () => ({ remote, savedAt });

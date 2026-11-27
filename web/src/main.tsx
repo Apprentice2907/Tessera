@@ -6,6 +6,7 @@ import { restore } from './store/persist';
 import { keepHoursInStep } from './store/rules';
 import { tickClock } from './store/clock';
 import { startContests } from './store/contests';
+import { openLinksOutside } from './store/backend';
 import './styles/app.css';
 import './styles/home.css';
 import './styles/today.css';
@@ -16,6 +17,7 @@ import './styles/wall.css';
 import './styles/review.css';
 import './styles/motion.css';
 
+openLinksOutside();
 // coding contests go into the calendar by themselves, once the saved state is in
 restore().then(startContests);
 const sync = keepHoursInStep();

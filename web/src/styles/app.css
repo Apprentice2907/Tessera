@@ -179,3 +179,5 @@ a.tile:hover { transform: translateY(-3px); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+/* Next up (Home, Today): what's next sits under the label, so a long name (a contest) never runs into the big time */
+.aside.next-what { left: var(--pad); right: var(--pad); top: 64px; bottom: auto; text-align: left; overflow-wrap: anywhere; }

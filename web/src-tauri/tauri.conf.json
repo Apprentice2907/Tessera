@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Tessera",
+  "version": "2.0.0",
+  "identifier": "app.tessera.desktop",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Tessera",
+        "url": "index.html",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 360,
+        "minHeight": 560,
+        "center": true,
+        "visible": false
+      },
+      {
+        "label": "widget",
+        "title": "Tessera widget",
+        "url": "widget.html",
+        "width": 330,
+        "height": 456,
+        "minWidth": 250,
+        "minHeight": 270,
+        "maxWidth": 760,
+        "maxHeight": 1100,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "skipTaskbar": true,
+        "alwaysOnBottom": true,
+        "visible": false
+      }
+    ],
+    "security": { "csp": null }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "shortDescription": "Tessera: today, hours, calendar, ideas, walls and an archive",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "windows": {
+      "nsis": { "installMode": "currentUser" }
+    }
+  }
+}

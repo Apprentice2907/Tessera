@@ -1,5 +1,5 @@
-// Tessera · upcoming contests from Codeforces, CodeChef and LeetCode. serve.py fetches them from the sites and keeps them
-// for half an hour; the app asks again every half hour.
+// Tessera · upcoming contests from Codeforces, CodeChef and LeetCode. The desktop app (or serve.py, or the Vercel function)
+// fetches them from the sites and keeps them for half an hour; the app asks again every half hour.
 //
 // Only contests: practice rounds, test rounds and multi-day challenges are left out everywhere.
 // Every contest goes into your calendar by itself, as an ordinary event (category Work), so it shows up in Today,
@@ -8,6 +8,7 @@
 // unless you changed its time yourself. Removing it from the calendar keeps it removed.
 import { create } from 'zustand';
 import { update } from './data';
+import { backend } from './backend';
 import { dayIdx } from '../lib/dates';
 import type { CalEvent } from '../lib/types';
 
@@ -38,8 +39,7 @@ function addToCalendar(list: Contest[]) {
 
 async function load() {
   try {
-    const r = await fetch('api/contests', { cache: 'no-store' }); if (!r.ok) throw new Error(String(r.status));
-    const list: Contest[] = ((await r.json()).contests as Omit<Contest, 'id' | 'D' | 's'>[]).filter(isContest).map(c => ({ ...c, id: contestId(c), D: dayIdx(new Date(c.start)), s: hourOf(c.start) }));
+    const list: Contest[] = (await backend.contests()).filter(isContest).map(c => ({ ...c, id: contestId(c), D: dayIdx(new Date(c.start)), s: hourOf(c.start) }));
     useContests.setState({ list });
     addToCalendar(list);
   } catch { useContests.setState({ list: 'off' }); }
