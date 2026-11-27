@@ -86,7 +86,8 @@ a.tile:hover { transform: translateY(-3px); }
 /* every hour gets a number: 1–11 light so they blend in, 12 AM and 12 PM dark and bold */
 .ticks span { color: #CACACF; }
 .ticks span.k { color: var(--ink); font-weight: 700; }
-.ticks.tight .k + span { visibility: hidden; }
+/* a number that would run into another steps aside (ui/Strip.tsx decides which) */
+.ticks span.off { visibility: hidden; }
 
 /* ---------- the page switcher and the toast ---------- */
 .nav { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 2px; padding: 5px; background: #fff; border-radius: 99px; box-shadow: 0 1px 2px rgba(0, 0, 0, .08), 0 10px 26px rgba(0, 0, 0, .12); z-index: 50; }

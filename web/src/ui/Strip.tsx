@@ -47,16 +47,32 @@ export function Strip({ cells, cats, id, onPick }: { cells: HourCells; cats: Cat
   );
 }
 
-/** every hour gets a number: 1–11 light, 12 AM and 12 PM dark and bold; when an hour is too narrow for "12 AM", the "1" after it steps aside */
+/** every hour gets a number: 1–11 light, 12 AM and 12 PM dark and bold. When the hours are too narrow for all of them
+ *  (a phone), the numbers keep an even step instead of running into each other: every hour if they fit, else every 2nd,
+ *  3rd or 6th. 12 AM and 12 PM always stay; a number that would touch one of them steps aside. */
+const STEPS = [1, 2, 3, 6];
 export function Ticks() {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const t = ref.current; if (!t) return;
     const fit = () => {
-      t.classList.remove('tight');
-      const k = t.querySelector('.k'), next = k?.nextElementSibling; if (!k || !next) return;
-      const r = document.createRange(); r.selectNodeContents(k);
-      if (r.getBoundingClientRect().right > next.getBoundingClientRect().left - 4) t.classList.add('tight');
+      const spans = [...t.children] as HTMLElement[];
+      // where each number's text actually reaches (it can run past its own hour)
+      const at = spans.map(s => { const r = document.createRange(); r.selectNodeContents(s); return r.getBoundingClientRect(); });
+      const clear = (r: DOMRect, o: DOMRect) => r.left >= o.right + 4 || r.right <= o.left - 4;
+      const ks = [0, 12].map(h => at[h]);
+      let on = new Set<number>([0, 12]);
+      for (const step of STEPS) {
+        const pick = new Set<number>([0, 12]); let prev: DOMRect | null = null, ok = true;
+        for (let h = 1; h < 24 && ok; h++) {
+          if (h % 12 === 0 || h % step) continue;
+          if (!ks.every(k => clear(at[h], k))) continue;   // next to 12 AM / 12 PM: it steps aside
+          if (prev && !clear(at[h], prev)) ok = false;      // two numbers touch: try a wider step
+          else { pick.add(h); prev = at[h]; }
+        }
+        if (ok) { on = pick; break; }
+      }
+      spans.forEach((s, h) => s.classList.toggle('off', !on.has(h)));
     };
     fit();
     const ro = new ResizeObserver(fit); ro.observe(t);
