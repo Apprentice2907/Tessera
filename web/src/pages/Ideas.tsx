@@ -1,9 +1,2 @@
-// Tessera · Ideas: the whiteboard (public/board.html, a plain-JS page) inside the page, edge to edge. The page switcher hides
-// here; the board brings its own way back (its first toolbar button, or keys 1–7).
-export function Ideas() {
-  return (
-    <main className="bento p-board">
-      <section className="tile board-tile"><iframe src="board.html?b=ideas&embed=1" title="Ideas board" /></section>
-    </main>
-  );
-}
+// Tessera · Ideas: the whiteboard (pages/ideas/), full screen.
+export { Board as Ideas } from './ideas/Board';

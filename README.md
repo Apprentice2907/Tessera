@@ -94,7 +94,7 @@ Vite dev server against it.
 | Today | The day's routines, events and tasks. Drag to In progress or Done, star, right-click to re-file. Also logs project updates. |
 | Hours | Today hour by hour, painted by category, and the month as a heat map. |
 | Calendar | The week, the month, routines as dots, and coding contests. Double-click to add or edit. |
-| Ideas | The whiteboard (`web/public/board.html`), full screen. |
+| Ideas | The whiteboard, full screen: sticky notes, text, shapes, connectors, pen and highlighter, sections, stamps, comments, links and images, and templates. Boards sit in folders (`B` opens them); right-click the canvas for Board options, with the background and the versions to go back to. Every open tab on a board sees the others' changes live. |
 | Wall | Wire-grid memory walls, one per trip, festival or season. |
 | Review | The archive. Monthly folders open a file each month and fill it in from one Hours category; projects folders hold a file per project, with a plan and a page a week. |
 
@@ -122,9 +122,12 @@ web/                    the app (React + TypeScript + Vite)
     store/      data.ts (the Zustand store), persist.ts (saving, sync, backups), rules.ts (cross-page rules),
                 clock.ts (today and the time), ui.ts (toast, the pop-up card, what pages remember)
     ui/         motion.tsx (Bento, Tile, Copy), CountUp, Strip (hour strip), Pop (pop-up card, toast), DataCard, icons
-    pages/      Home, Today, Hours, Calendar, Ideas; wall/ and review/ are larger and have their own folders
+    pages/      Home, Today, Hours, Calendar; ideas/, wall/ and review/ are larger and have their own folders
+      ideas/    the whiteboard: core.ts (state, saving, undo, versions, sync between tabs), input.ts (pointer, keys,
+                clipboard), extras.ts (templates, comments, images, export), draw.ts (shapes, connectors, stamps),
+                and the React parts: Canvas, Chrome (bars, tools), Cards (menus, options, drawer, dialogs)
     styles/     app.css (design system: tokens, grid, tiles) and one stylesheet per page
-  public/       assets/ (icons, the widget's web manifest); board.html and board/ (the whiteboard, plain JS)
+  public/       assets/ (icons, the widget's web manifest)
 mockup/                 the local side: the server and the desktop widget (the name is kept so your data folder,
                         mockup/.data, and the Startup shortcut keep working)
   serve.py              local server: saved state, daily backups, contests; serves web/dist
