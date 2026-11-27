@@ -1,0 +1,22 @@
+# Your own data: never commit it
+# the saved state (tasks, hours, notes) that serve.py keeps
+mockup/.data/
+# the desktop widget's browser profile, log and position
+mockup/desktop/.webview/
+mockup/desktop/widget.log
+mockup/desktop/widget-position.json
+# design reference screenshots
+refernce/
+
+# Local tooling
+.claude/settings.local.json
+.claude/skills/
+skills-lock.json
+.vercel/
+
+# Generated
+__pycache__/
+*.pyc
+Thumbs.db
+desktop.ini
+.DS_Store

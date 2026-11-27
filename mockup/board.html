@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tessera · Board</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23111113'/%3E%3Crect x='8' y='8' width='9' height='9' rx='2' fill='%23FFE380'/%3E%3Crect x='15' y='15' width='9' height='9' rx='2' fill='%23A9D8FF'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="board/board.css">
+</head>
+<body>
+<!-- the canvas: objects live in #world (pan + zoom), handles and cursors live on top in screen space -->
+<div class="vp" id="vp" tabindex="-1" aria-label="Whiteboard canvas">
+  <div class="world" id="world">
+    <div id="objs"></div>
+    <svg class="lines" id="lines" width="1" height="1" overflow="visible" aria-hidden="true"></svg>
+  </div>
+  <div class="overlay" id="overlay"></div>
+  <div class="cursors" id="cursors"></div>
+  <div class="fx" id="fx"></div>
+</div>
+
+<!-- top bar: board on the left, actions on the right -->
+<header class="bar bar-l" id="bar-l"></header>
+<header class="bar bar-r" id="bar-r"></header>
+
+<!-- tools along the bottom, a small bar above the selection -->
+<nav class="tools" id="tools" aria-label="Tools"></nav>
+<div class="flyout" id="flyout" hidden></div>
+<div class="ctx" id="ctx" hidden></div>
+
+<div class="drawer" id="drawer" hidden></div>
+<div class="pops" id="pops"></div>
+<div class="toast" id="toast" role="status"></div>
+<input type="file" id="file" accept="image/*" multiple hidden>
+
+<script src="board/core.js"></script>
+<script src="board/render.js"></script>
+<script src="board/extras.js"></script>
+<script src="board/input.js"></script>
+<script src="board/ui.js"></script>
+</body>
+</html>

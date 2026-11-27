@@ -1,0 +1,116 @@
+/* ============ Tessera · the design system: tokens, the bento grid, tiles and the page switcher ============
+   Every page is one grid of tiles (.bento > .tile). A tile's ground (.g-*) sets its two copy colours, --c1 and --c2.
+   A tile's words sit top left (.copy: "<b>Bold.</b> <span>muted</span>"); a big number bottom left (.stat),
+   a small note bottom right (.aside). Page styles live next to each page in pages/. */
+:root {
+  --ground: #ECEBE7;
+  --ink: #111113;
+  --ink-2: #5C5C62;
+  --gap: 14px;
+  --pad: 20px;
+  --radius: 22px;
+  --font: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --green: #3E8A66; --lime: #E8F57E;
+  --lilac: #C9B8FF; --lilac-ink: #3B2F6B;
+  --night: #151517; --night-2: #26262A;
+  --paper: #F7F7F5; --kraft: #C8A37C; --yellow: #EEF59A;
+  --ease: cubic-bezier(.25, .8, .25, 1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { background: var(--ground); font-family: var(--font); color: var(--ink); -webkit-font-smoothing: antialiased; overflow: hidden; }
+button, input { font: inherit; color: inherit; background: none; border: 0; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+/* ---------- the grid: fills the window above the page switcher ---------- */
+.bento { position: fixed; top: 20px; left: 20px; right: 20px; bottom: 86px; display: grid; gap: var(--gap); grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); }
+.tile { position: relative; overflow: hidden; overflow: clip; border-radius: var(--radius); color: var(--c1); text-decoration: none; display: block; min-width: 0; min-height: 0; }
+a.tile { transition: transform .3s var(--ease); }
+a.tile:hover { transform: translateY(-3px); }
+.copy { position: absolute; left: var(--pad); top: calc(var(--pad) - 2px); right: var(--pad); z-index: 3; font-size: 19px; line-height: 1.25; letter-spacing: -.015em; }
+.copy b { font-weight: 700; }
+.copy span { color: var(--c2); }
+.label { display: inline-flex; align-items: center; height: 32px; padding: 0 13px; border-radius: 11px; background: var(--ink); color: var(--lime); font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+.copy .label { color: var(--lime); }
+.stat { position: absolute; left: var(--pad); bottom: 16px; display: flex; align-items: baseline; gap: 8px; white-space: nowrap; font-weight: 700; letter-spacing: -.045em; line-height: .9; font-size: clamp(44px, 10.5vh, 92px); color: var(--c1); }
+.stat small { font-size: .42em; letter-spacing: -.02em; }
+.aside { position: absolute; right: var(--pad); bottom: 18px; text-align: right; font-size: 15px; font-weight: 700; letter-spacing: -.01em; line-height: 1.35; color: var(--c1); }
+.aside small { display: block; font-size: 13px; font-weight: 400; color: var(--c2); }
+/* a round button in a tile's top right corner */
+.up { position: absolute; right: var(--pad); top: var(--pad); width: 34px; height: 34px; border-radius: 50%; background: var(--c1); color: var(--green); display: grid; place-items: center; }
+
+/* grounds: each sets its own two copy colours */
+.g-paper { background-color: var(--paper); background-image: linear-gradient(#0000000b 1px, transparent 1px), linear-gradient(90deg, #0000000b 1px, transparent 1px); background-size: 16px 16px; --c1: var(--ink); --c2: var(--ink-2); }
+.g-white { background: #fff; --c1: var(--ink); --c2: var(--ink-2); }
+.g-cream { background: #F7F6F2; --c1: var(--ink); --c2: var(--ink-2); }
+.g-green { background: var(--green); --c1: var(--lime); --c2: rgba(232, 245, 126, .72); }
+.g-lilac { background: var(--lilac); --c1: var(--ink); --c2: var(--lilac-ink); }
+.g-orange { background: linear-gradient(180deg, #FF7438, #FF5A1F); --c1: #fff; --c2: rgba(255, 255, 255, .82); }
+.g-night { background: var(--night); --c1: #F5F5F7; --c2: #9A9AA2; }
+.g-yellow { background: var(--yellow); --c1: var(--ink); --c2: #5E6320; }
+.g-kraft { background-color: var(--kraft); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .38 0 0 0 0 .26 0 0 0 0 .14 0 0 0 .3 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); --c1: #2B1E12; --c2: rgba(43, 30, 18, .66); }
+.g-bands { background: radial-gradient(circle at 104% 108%, #ff5b2e 0 22%, #ff8a3d 22% 36%, #ffb547 36% 50%, #ffd9a0 50% 63%, #c8bdff 63% 77%, #8b7bff 77% 91%, #5b5bf6 91%); --c1: #fff; --c2: rgba(255, 255, 255, .8); }
+.g-sea { background: radial-gradient(circle at 104% 108%, #BAE6FD 0 20%, #7DD3FC 20% 34%, #38BDF8 34% 48%, #0EA5E9 48% 62%, #6366F1 62% 78%, #3D3BD6 78%); --c1: #fff; --c2: rgba(255, 255, 255, .85); }
+.g-dots { background-color: #F5F5F5; background-image: radial-gradient(circle, #CDCDCD 1px, transparent 1.2px); background-size: 22px 22px; --c1: var(--ink); --c2: var(--ink-2); }
+
+/* ---------- a white card hung off the bottom-right corner of a hero tile ---------- */
+.card { position: absolute; left: 7%; top: 70px; right: -2px; bottom: -2px; background: rgba(255, 255, 255, .95); border-radius: 18px 0 var(--radius) 0; box-shadow: 0 30px 60px -20px rgba(40, 20, 90, .4), 0 0 0 .5px rgba(0, 0, 0, .06); padding: 18px 0 0 22px; color: var(--ink); overflow: hidden; }
+.card-head { display: flex; align-items: center; gap: 12px; padding-right: 22px; }
+.card-head strong { font-size: 18px; letter-spacing: -.015em; }
+.card-head small { font-size: 13.5px; color: #8A8A90; }
+.pill { margin-left: auto; display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border-radius: 99px; background: #EEF0FF; color: #4B47E0; font-size: 13px; font-weight: 700; white-space: nowrap; }
+
+/* task rows with a check (Home, Today, the widget) */
+.rows { display: grid; grid-template-columns: minmax(0, 1fr); margin-top: 12px; }
+.row { display: flex; align-items: center; gap: 13px; min-height: 50px; padding-right: 22px; border-top: 1px solid #EFEFF2; font-size: 15.5px; }
+.row .t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .t i { font-style: normal; color: #9A9AA0; font-size: 13px; margin-left: 8px; }
+.row time { flex: none; font-size: 12.5px; font-weight: 700; color: #55555B; background: #F2F2F4; padding: 4px 9px; border-radius: 8px; }
+.chk { position: relative; flex: none; width: 24px; height: 24px; border-radius: 8px; border: 2px solid var(--c); display: grid; place-items: center; transition: background .25s var(--ease); }
+.chk svg { width: 14px; height: 14px; stroke: #fff; stroke-width: 3; fill: none; opacity: 0; }
+.done .chk { background: var(--c); }
+.done .chk svg { opacity: 1; }
+.done .t { color: #A4A4AA; text-decoration: line-through; text-decoration-color: #C4C4CA; }
+.prog .chk::before { content: ''; position: absolute; left: 50%; top: 50%; width: 9px; height: 9px; margin: -4.5px; border-radius: 3px; background: var(--c); }
+
+/* an hour strip: 24 blocks and the hours under them (Home and Hours) */
+.strip { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; }
+.hb { height: 46px; border-radius: 9px; background: #E9E9EC; display: flex; align-items: center; padding-left: 9px; font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow: hidden; }
+.hb.f { background: var(--cs); color: var(--cf); }
+.ticks { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; font-size: 12px; white-space: nowrap; margin-top: 7px; }
+/* every hour gets a number: 1–11 light so they blend in, 12 AM and 12 PM dark and bold */
+.ticks span { color: #CACACF; }
+.ticks span.k { color: var(--ink); font-weight: 700; }
+.ticks.tight .k + span { visibility: hidden; }
+
+/* ---------- the page switcher and the toast ---------- */
+.nav { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 2px; padding: 5px; background: #fff; border-radius: 99px; box-shadow: 0 1px 2px rgba(0, 0, 0, .08), 0 10px 26px rgba(0, 0, 0, .12); z-index: 50; }
+.nav button { height: 38px; padding: 0 16px; border-radius: 99px; font-size: 14px; font-weight: 700; color: var(--ink-2); letter-spacing: -.01em; white-space: nowrap; }
+.nav button:hover { color: var(--ink); background: #F2F2EF; }
+.nav button.on { background: var(--ink); color: #fff; }
+.toast { position: fixed; left: 50%; bottom: 78px; transform: translate(-50%, 10px); background: var(--ink); color: #fff; font-size: 14px; font-weight: 700; padding: 10px 16px; border-radius: 12px; opacity: 0; pointer-events: none; transition: opacity .25s var(--ease), transform .25s var(--ease); z-index: 60; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- narrower windows: two columns, the lead tile first, the page scrolls ---------- */
+@media (max-width: 1080px), (max-height: 600px) {
+  body { overflow: auto; }
+  .bento { position: static; margin: 20px 20px 96px; grid-template-areas: none !important; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: none; grid-auto-rows: 230px; grid-auto-flow: row dense; }
+  .bento > .tile { grid-area: auto !important; }
+  .bento > .tile.lead { grid-column: span 2 !important; grid-row: span 2 !important; }
+  .bento > .tile.wide { grid-column: span 2 !important; }
+  .bento > .tile.tall { grid-row: span 2 !important; }
+}
+/* phones: one column, every tile full width; the page switcher scrolls sideways */
+@media (max-width: 640px) {
+  :root { --pad: 18px; --gap: 12px; }
+  .bento { margin: 12px 12px 88px; grid-template-columns: minmax(0, 1fr); grid-auto-rows: 214px; }
+  .bento > .tile.lead, .bento > .tile.wide { grid-column: auto !important; }
+  .stat { font-size: clamp(48px, 17vw, 84px); }
+  .nav { left: 10px; right: 10px; bottom: 10px; transform: none; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; padding-bottom: calc(5px + env(safe-area-inset-bottom) * .4); }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav button { flex: none; padding: 0 14px; font-size: 13.5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

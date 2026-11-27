@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tessera</title>
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="app/app.css">
+<link rel="stylesheet" href="pages/home.css">
+<link rel="stylesheet" href="pages/today.css">
+<link rel="stylesheet" href="pages/hours.css">
+<link rel="stylesheet" href="pages/calendar.css">
+<link rel="stylesheet" href="pages/ideas.css">
+<link rel="stylesheet" href="pages/wall/wall.css">
+<link rel="stylesheet" href="pages/review/review.css">
+</head>
+<body>
+<div id="app"></div>
+<nav class="nav" id="nav" aria-label="Sections"></nav>
+<div class="toast" id="toast" role="status"></div>
+<!-- data, then the shared core, then the shell, then one script per page (each adds itself to P) -->
+<script src="data/data.js"></script>
+<script src="data/archive.js"></script>
+<script src="core/ui.js"></script>
+<script src="core/sort.js"></script>
+<script src="core/store.js"></script>
+<script src="app/app.js"></script>
+<script src="pages/home.js"></script>
+<script src="pages/today.js"></script>
+<script src="pages/hours.js"></script>
+<script src="pages/calendar.js"></script>
+<script src="pages/ideas.js"></script>
+<script src="pages/wall/art.js"></script>
+<script src="pages/wall/kit.js"></script>
+<script src="pages/wall/wall.js"></script>
+<script src="pages/review/review.js"></script>
+</body>
+</html>

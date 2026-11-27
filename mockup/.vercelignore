@@ -1,0 +1,4 @@
+# local only: the dev server, your saved data and the desktop widget
+serve.py
+.data/
+desktop/

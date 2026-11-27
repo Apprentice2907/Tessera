@@ -1,0 +1,115 @@
+/* ============ Today: the list, In progress, Done, the week, and New task ============ */
+.p-today { grid-template-areas: "list list prog next" "list list prog done" "week week rout new"; }
+
+/* the list: it scrolls with no bar; a fade at the bottom says there is more */
+.p-today .card { display: flex; flex-direction: column; padding: 18px 0 0; }
+.p-today .card-head { padding: 0 22px; }
+.p-today .card-head small.left { margin-left: auto; }
+.p-today .rows { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; align-content: start; padding: 0 0 22px 22px; scrollbar-width: none; }
+.p-today .rows::-webkit-scrollbar { display: none; }
+.p-today .rows.more { -webkit-mask-image: linear-gradient(#000 calc(100% - 44px), transparent); mask-image: linear-gradient(#000 calc(100% - 44px), transparent); }
+.p-today .row { position: relative; cursor: grab; user-select: none; }
+/* a grip shows on hover, so the row reads as something you can drag */
+.p-today .row::before { content: ''; position: absolute; left: -16px; top: 50%; width: 8px; height: 14px; margin-top: -7px; background: radial-gradient(circle, #B9B9C0 1.3px, transparent 1.7px) 0 0 / 4px 4.67px; opacity: 0; transition: opacity .15s; }
+.p-today .row:hover::before { opacity: 1; }
+.p-today .rows .sub { padding: 18px 0 8px; border-top: 1px solid #EFEFF2; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #9A9AA0; }
+.p-today .rows .empty { padding: 16px 22px 16px 0; border-top: 1px solid #EFEFF2; font-size: 14.5px; color: #8A8A90; }
+.wlink { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: 8px; background: #F2F2F4; color: var(--ink-2); font-size: 12px; font-weight: 700; text-decoration: none; }
+.wlink:hover { background: #E8E8EC; color: var(--ink); }
+
+/* In progress: a card per task, with where you stopped */
+.plist { position: absolute; left: var(--pad); right: var(--pad); top: 66px; bottom: 14px; display: grid; align-content: start; gap: 10px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.plist::-webkit-scrollbar { display: none; }
+.pcard { background: rgba(255, 255, 255, .78); border-radius: 16px; padding: 13px 14px; display: grid; gap: 6px; cursor: grab; user-select: none; }
+.pcard.empty { cursor: default; background: rgba(255, 255, 255, .35); box-shadow: inset 0 0 0 1.5px rgba(59, 47, 107, .22); color: var(--lilac-ink); font-size: 14px; line-height: 1.35; }
+.pcard .tt { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; min-width: 0; }
+.pcard .tt span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pcard .tt time { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--lilac-ink); }
+.pcard .chk { width: 20px; height: 20px; border-radius: 7px; }
+.pcard input { width: 100%; font-size: 13.5px; color: var(--lilac-ink); outline: 0; border-bottom: 1px dashed transparent; padding: 1px 0; user-select: text; cursor: text; }
+.pcard input:focus { border-bottom-color: var(--lilac-ink); }
+.pcard input::placeholder { color: #7A6DAF; }
+
+/* the week: pick a day to plan it */
+.wk7 { position: absolute; left: var(--pad); right: var(--pad); bottom: 18px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.wk7 button { position: relative; height: clamp(64px, 11vh, 84px); border-radius: 16px; background: #fff; box-shadow: 0 0 0 .5px #00000014, 0 2px 6px -2px #00000014; display: grid; place-content: center; gap: 4px; text-align: center; font-size: 13px; font-weight: 700; color: var(--ink-2); }
+.wk7 button b { font-size: 26px; color: var(--ink); letter-spacing: -.03em; }
+.wk7 button em { position: absolute; top: 8px; right: 9px; font-style: normal; font-size: 11px; color: #9A9AA0; }
+.wk7 button.on { background: var(--ink); color: #A5A5AC; }
+.wk7 button.on b { color: #fff; }
+.wk7 button.on em { color: var(--lime); }
+
+/* the next day's events */
+.rlist { position: absolute; left: var(--pad); right: var(--pad); bottom: 14px; display: grid; gap: 2px; }
+.rl { display: flex; align-items: center; gap: 10px; height: 26px; font-size: 14px; color: #D6D6DC; }
+.rl i { flex: none; width: 12px; height: 12px; border-radius: 50%; background: var(--c); }
+.rl span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rl small { margin-left: auto; flex: none; color: #9A9AA2; font-size: 12.5px; font-weight: 700; }
+
+/* star: shows on hover, stays when on; starred tasks sit at the top */
+.star { flex: none; width: 30px; height: 30px; margin: 0 -4px; border-radius: 9px; display: grid; place-items: center; color: #B4B4BB; opacity: 0; transition: opacity .15s, background .15s, color .15s; }
+.star svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; transition: transform .25s var(--ease); }
+.row:hover .star, .pcard:hover .star, .star:focus-visible, .star.on { opacity: 1; }
+.star:hover { background: #0000000a; color: #77777E; }
+.star.on { color: #F2A516; }
+.star.on svg { fill: currentColor; }
+.star.on:hover { color: #D98E06; }
+.star:active svg { transform: scale(.82); }
+.done .star.on { opacity: .45; }
+.pcard .star { width: 26px; height: 26px; margin: -3px -2px; }
+.pcard .star svg { width: 16px; height: 16px; }
+.pcard .star.on { color: #E39A0C; }
+@media (hover: none) { .star { opacity: 1; } }
+@keyframes fresh { from { background: #FFF6B8; box-shadow: -14px 0 0 #FFF6B8; } }
+.row.fresh, .pcard.fresh { animation: fresh 1.8s var(--ease); }
+
+/* dragging: the task follows the cursor, the tiles it can land on light up */
+.row.dragging, .pcard.dragging { opacity: .3; }
+.drag-ghost { position: fixed !important; z-index: 100; margin: 0; pointer-events: none; animation: none !important; box-shadow: 0 22px 44px -14px rgba(25, 12, 70, .5), 0 0 0 .5px rgba(0, 0, 0, .08); }
+.drag-ghost.row { background: #fff; border-top: 0; border-radius: 14px; padding-left: 14px; }
+.drag-ghost.row::before { display: none; }
+.drag-ghost.pcard { background: #fff; }
+body.is-dragging, body.is-dragging * { cursor: grabbing !important; }
+.drop::after { content: ''; position: absolute; inset: 7px; z-index: 6; border: 2px dashed transparent; border-radius: 17px; pointer-events: none; transition: border-color .15s, background-color .15s; }
+.drop-ok::after { border-color: rgba(17, 17, 19, .3); }
+.g-green.drop-ok::after, .g-bands.drop-ok::after { border-color: rgba(255, 255, 255, .7); }
+.drop-hot::after { border-style: solid; border-color: var(--ink); background: rgba(255, 255, 255, .16); }
+.g-green.drop-hot::after, .g-bands.drop-hot::after { border-color: #fff; }
+.drop::before { content: attr(data-drop-label); position: absolute; right: 18px; bottom: 18px; z-index: 7; display: flex; align-items: center; height: 30px; padding: 0 13px; border-radius: 99px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; opacity: 0; transform: translateY(5px); transition: opacity .15s, transform .2s var(--ease); pointer-events: none; }
+.drop-hot::before { opacity: 1; transform: none; }
+@keyframes bump { 40% { transform: scale(1.02); } }
+.bump { animation: bump .45s var(--ease); }
+
+/* the task menu (right-click): category, move to, delete */
+.tmenu { position: fixed; z-index: 120; min-width: 176px; padding: 6px; border-radius: 14px; background: #fff; box-shadow: 0 0 0 .5px rgba(0, 0, 0, .1), 0 18px 40px -12px rgba(20, 12, 50, .35); display: grid; font-family: var(--font); }
+.tmenu small { padding: 8px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #9A9AA0; }
+.tmenu button { display: flex; align-items: center; gap: 9px; height: 32px; padding: 0 10px; border-radius: 9px; font-size: 14px; color: var(--ink); text-align: left; }
+.tmenu button:hover, .tmenu button:focus-visible { background: #F2F2F4; outline: 0; }
+.tmenu button i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+.tmenu button.on { font-weight: 700; }
+.tmenu button.on::after { content: ''; margin-left: auto; width: 9px; height: 5px; border: solid var(--ink); border-width: 0 0 2px 2px; transform: rotate(-45deg) translate(1px, -1px); }
+.tmenu .del { margin-top: 4px; color: #C8322B; box-shadow: 0 -1px 0 #EFEFF2; border-radius: 0 0 9px 9px; }
+
+/* New task / project update: a field, its time when you type one, and a star */
+.addf { position: absolute; left: var(--pad); right: var(--pad); bottom: 16px; display: grid; gap: 8px; }
+.addf input { height: 44px; border-radius: 13px; background: #fff; padding: 0 14px; font-size: 15px; box-shadow: 0 0 0 .5px #0000001a; outline: 0; }
+.addf input:focus { box-shadow: 0 0 0 2px var(--ink); }
+.addf .add { height: 40px; border-radius: 12px; background: var(--ink); color: #fff; font-size: 14.5px; font-weight: 700; }
+.addf .nt { position: relative; }
+.addf .nt input { width: 100%; padding-right: 48px; }
+.addf .nt.has-time input { padding-right: 112px; }
+.addf .ntime { position: absolute; right: 46px; top: 50%; transform: translateY(-50%); height: 24px; padding: 0 8px; border-radius: 8px; background: #F2F2F4; color: #55555B; font-size: 12.5px; font-weight: 700; line-height: 24px; white-space: nowrap; pointer-events: none; }
+.addf .nt-star { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; margin: 0; border-radius: 9px; opacity: 1; background: none; color: #A9A9B0; }
+.addf .nt-star:hover { background: #F2F2F4; color: #77777E; }
+.addf .nt-star.on { color: #F2A516; }
+.nt-tile .copy { right: 150px; }
+.ntmode { position: absolute; right: 14px; top: 14px; z-index: 4; display: flex; padding: 3px; border-radius: 11px; background: rgba(17, 17, 19, .08); }
+.ntmode button { height: 26px; padding: 0 10px; border-radius: 8px; font-size: 12.5px; font-weight: 700; color: #5E6320; }
+.ntmode button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+.upchips { display: flex; gap: 6px; overflow: hidden; }
+.upchips button { flex: none; height: 26px; padding: 0 10px; border-radius: 8px; background: rgba(255, 255, 255, .7); font-size: 12.5px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+.upchips button:hover { background: #fff; }
+
+@media (max-width: 640px) {
+  .nt-tile.updating .copy span { display: none; }
+}
