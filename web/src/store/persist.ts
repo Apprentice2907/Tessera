@@ -60,13 +60,20 @@ async function syncMirrored() {
   for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && MIRRORED.test(k) && !(k in keys)) backend.set(k, local.get(k)).catch(() => {}); }
   return back;
 }
-// a page that keeps its own key in this browser (the Wall) calls this after saving it
+// a page that keeps its own keys in this browser (the Wall, the Ideas boards) calls this after saving one;
+// null removes the key from the server's copy too (a deleted board)
 const mirrorTimers: Record<string, number> = {};
-export function mirror(key: string, value: string) {
+export function mirror(key: string, value: string | null) {
   if (!MIRRORED.test(key)) return;
   clearTimeout(mirrorTimers[key]);
   mirrorTimers[key] = window.setTimeout(() => push(key, value), 600);
 }
+
+// the walls and boards are in step with the server's copy, or there is no server to ask. A page that would start a
+// fresh one (the Ideas board seeds its first board) waits for this, so a browser that lost its data gets the old ones
+// back instead of covering them with a new, empty one
+let mirroredDone = () => {};
+export const mirrored = new Promise<void>(r => { mirroredDone = r; });
 
 /** load what this browser has, then keep saving and keep in step with other windows; resolves once the server has been asked */
 export function restore(): Promise<void> {
@@ -83,10 +90,11 @@ export function restore(): Promise<void> {
   first.then(() => { ready = true; soon(); });
   // other windows' changes: check the server now and every few seconds while this window is showing
   first.then(async () => {
-    if (!remote) return;
+    if (!remote) { mirroredDone(); return; }
     const back = await syncMirrored();
     // walls or boards came back from the server: load once more so the pages read them (once per visit, never in a loop)
-    if (back && !sessionStorage.getItem('tessera.restored')) { sessionStorage.setItem('tessera.restored', '1'); location.reload(); }
+    if (back && !sessionStorage.getItem('tessera.restored')) { sessionStorage.setItem('tessera.restored', '1'); location.reload(); return; }
+    mirroredDone();
   });
   setInterval(() => { if (document.visibilityState === 'visible') pull(); }, 2500);
   return first.then(() => {});

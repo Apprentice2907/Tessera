@@ -8,7 +8,7 @@
 // It also runs the two windows: the app, and the to-do widget that sits on the desktop behind your other windows.
 // A tray icon opens the app, shows or hides the widget, turns "Start with Windows" on or off, and quits.
 // Closing the app's window while the widget is on keeps Tessera running for the widget; otherwise it quits.
-// TESSERA_DATA=<folder> runs it on another data folder (for testing).
+// TESSERA_DATA=<folder> runs it on another data folder, TESSERA_PAGE=<page> opens it on a page (both for testing).
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -329,7 +329,8 @@ pub fn run() {
             if s.widget { set_widget(handle.clone(), true); }
             // started with Windows: only the widget; opened by you: the app too
             let at_sign_in = std::env::args().any(|a| a == "--autostart");
-            if !at_sign_in || !s.widget { open_main(handle.clone(), None); }
+            // (TESSERA_PAGE=ideas opens it on a page, for testing)
+            if !at_sign_in || !s.widget { open_main(handle.clone(), std::env::var("TESSERA_PAGE").ok()); }
             Ok(())
         })
         .on_window_event(|w, e| {
