@@ -1,0 +1,13 @@
+/* ============ Tessera · what the React app adds for movement; the look itself is app.css and the page styles ============ */
+/* the page switcher: the dark pill slides to the page you picked */
+.nav button { position: relative; }
+.nav button.on { background: none; }
+.nav button span { position: relative; z-index: 1; }
+.nav-on { position: absolute; inset: 0; z-index: 0; border-radius: 99px; background: var(--ink); }
+/* Today's week: the dark day slides to the one you pick */
+.wk7 button.on { background: #fff; }
+.wk7-on { position: absolute; inset: 0; z-index: 0; border-radius: 16px; background: var(--ink); }
+.wk7-in { position: relative; z-index: 1; display: grid; gap: 4px; }
+.wk7 button em { z-index: 1; }
+/* a task leaving a list is lifted out of the flow while it fades (Motion's popLayout): the list it scrolls in must hold it */
+.p-today .rows, .w .rows { position: relative; }
