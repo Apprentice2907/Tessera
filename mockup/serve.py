@@ -2,7 +2,9 @@
 
     python serve.py          then open http://localhost:5178
 
-It serves this folder with caching turned off, and keeps your data on this computer:
+It serves the app with caching turned off: the React build in ../web/dist when there is one (`npm run build` in web/),
+otherwise the classic app in this folder (TESSERA_CLASSIC=1 always serves the classic one). Either way it keeps your
+data on this computer, in the same place and the same format:
 
   /api/state      one JSON file per key in .data/store/: the app's state, the walls, the ideas boards
   /api/backups    a copy of everything, made before the first change of each day (and whenever you ask);
@@ -30,7 +32,15 @@ BACKUPS = os.path.join(DATA, 'backups')
 KEEP = 60                                   # backups kept
 KEY = re.compile(r'^tessera\.[a-z0-9._-]{1,80}$')
 LIMIT = 64 * 1024 * 1024                    # walls carry photos, so a key can be a few MB
+WEB = os.path.join(os.path.dirname(ROOT), 'web', 'dist')   # the React app, once built
 _lock = threading.Lock()
+
+
+def site():
+    """The folder the app is served from: the React build if there is one, else the classic app here."""
+    if os.environ.get('TESSERA_CLASSIC') != '1' and os.path.isfile(os.path.join(WEB, 'index.html')):
+        return WEB
+    return ROOT
 
 
 # ---------- the store: one file per key ----------
@@ -228,7 +238,7 @@ class Server(http.server.ThreadingHTTPServer):
 
 
 def make_server(port=PORT):
-    return Server(('127.0.0.1', port), functools.partial(Handler, directory=ROOT))
+    return Server(('127.0.0.1', port), functools.partial(Handler, directory=site()))
 
 
 if __name__ == '__main__':

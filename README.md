@@ -6,20 +6,58 @@ A tessera is one small tile of a mosaic. Here each day is a tile, and over time 
 
 Tessera is a personal life OS: today's tasks, where the hours went, a calendar, an ideas board, memory walls, and a
 monthly archive that fills itself in from all of them. Every page is one bento grid of tiles. It runs on the real
-date and turns to the new day at midnight. Plain HTML, CSS and JavaScript, with no build step and no dependencies.
+date and turns to the new day at midnight.
+
+## Stack
+
+- **React 19 + TypeScript**, built with **Vite** (`web/`).
+- **Zustand** holds the state; changes run through **Immer** drafts, so the saved format stays exactly what it was.
+- **React Router** (hash routes, so `#today` and `#review/<id>` links still work).
+- **Motion** for layout and page movement: tiles arrive in order, a ticked or dragged task slides to its new place,
+  Review's folder opens into its cover and a file into its header, the page switcher's pill slides.
+- **GSAP** for timelines and count-ups: big numbers count up, the hour strip fills in from the left, the month's squares
+  light up in order. The count-up follows React Bits' Count Up, written on GSAP.
+- Everything respects `prefers-reduced-motion`.
+- A small **Python** standard-library server (`mockup/serve.py`) keeps your data on this computer, makes daily backups
+  and fetches coding contests. No database.
 
 ## Run it
+
+Once, and after pulling changes:
+
+```
+cd web
+npm install
+npm run build
+```
+
+Then:
 
 ```
 python mockup/serve.py
 ```
 
-Then open http://localhost:5178. Keys `1`–`7` switch pages; `U` logs a project update from anywhere.
+and open http://localhost:5178. Keys `1`–`7` switch pages; `U` logs a project update from anywhere.
+
+`serve.py` serves the React build in `web/dist` when there is one, and the classic app in `mockup/` when there isn't
+(`TESSERA_CLASSIC=1` always serves the classic one). Both read and write the same data.
+
+### Working on it
+
+```
+python mockup/serve.py 5199 mockup/.data/test
+cd web && npm run dev
+```
+
+`npm run dev` opens the app on http://localhost:5173 with hot reload, and sends `/api` to the test server on 5199
+(set `TESSERA_SERVER` to point it somewhere else). `npm run typecheck` runs TypeScript on its own.
 
 ## Your data
 
 - **Where it lives:** in the browser, and with `serve.py` running, on this computer too (`mockup/.data/store/`, one
   file per part). The app and the desktop widget share it, so a task ticked in one is ticked in the other.
+- **The format:** the same keys as always (`tessera.state`, `tessera.walls`, `tessera.wb.*`), so data and backups made
+  by the classic app load as they are.
 - **Backups:** the server copies everything to `mockup/.data/backups/` before the first change of each day and keeps
   the last 60. "Back up now" makes one on the spot.
 - **A copy to keep:** "Download a copy" saves one file with everything. "Restore from a file" puts it back, after
@@ -38,7 +76,8 @@ fetched from the sites' public APIs and kept for half an hour.
 ## Testing
 
 `python mockup/serve.py 5199 mockup/.data/test` runs a second copy on its own port with its own data (the
-`tessera-test` launch config), so a test never touches your real tasks.
+`tessera-test` launch config), so a test never touches your real tasks. The `tessera-web` launch config runs the
+Vite dev server against it.
 
 ## The pages
 
@@ -57,26 +96,30 @@ Review counts each monthly folder's days and hours from Hours.
 
 ## The to-do widget
 
-- `mockup/widget.html` is Today's list on its own: keep it open, add it to a phone's home screen, or embed it.
-- `mockup/desktop/widget.pyw` puts it on the Windows desktop: a borderless card behind your windows that you can drag
-  and resize. It needs `pip install pywebview`, and starts the server if it isn't running. A shortcut to it in the
-  Startup folder starts it at sign-in.
+- `widget.html` is Today's list on its own: keep it open, add it to a phone's home screen, or embed it.
+- `mockup/desktop/widget.pyw` puts it on the Windows desktop (`widget.html?desk`): a borderless card behind your
+  windows that you can drag and resize. It needs `pip install pywebview`, and starts the server if it isn't running.
+  A shortcut to it in the Startup folder starts it at sign-in. It shows whichever app `serve.py` serves.
 
 ## How the code is laid out
 
 ```
-mockup/
-  index.html, widget.html, board.html   the three entry pages
-  serve.py                              local server: saved state, daily backups, contests
-  data/       data.js (dates, the clock, tasks and hours), archive.js (Review's folders and projects)
-  core/       ui.js (DOM helpers), sort.js (on-device task sorter), store.js (saving, sync, cross-page rules)
-  app/        app.css (design system: tokens, grid, tiles), app.js (router, page switcher, shared pieces)
-  pages/      one .js + .css per page; wall/ and review/ are larger and have their own folders
-  widget/     the to-do widget's script and styles
-  board/      the whiteboard behind Ideas
-  desktop/    the Windows desktop widget
-  assets/     icons and the widget's web manifest
+web/                    the app (React + TypeScript + Vite)
+  index.html, widget.html             the two entry pages
+  vite.config.ts                      the build; it copies the whiteboard in from mockup/
+  src/
+    main.tsx, widget.tsx              entries: load the saved state, keep Hours in step, start the clock, draw
+    App.tsx                           the shell: routes, page switcher, keys, page transitions
+    lib/        dates.ts (day numbers from a fixed Monday), types.ts (the saved format), data.ts (fixed tables
+                and helpers), sort.ts (the on-device task sorter)
+    store/      data.ts (the Zustand store), persist.ts (saving, sync, backups), rules.ts (cross-page rules),
+                clock.ts (today and the time), ui.ts (toast, the pop-up card, what pages remember)
+    ui/         motion.tsx (Bento, Tile, Copy), CountUp, Strip (hour strip), Pop (pop-up card, toast), DataCard, icons
+    pages/      Home, Today, Hours, Calendar, Ideas; wall/ and review/ are larger and have their own folders
+    styles/     app.css (design system: tokens, grid, tiles) and one stylesheet per page, as in the classic app
+  public/assets/                      icons and the widget's web manifest
+mockup/                 the classic app (plain HTML/CSS/JS), the server and the desktop widget
+  serve.py              local server: saved state, daily backups, contests; serves web/dist when it's built
+  board.html, board/    the whiteboard behind Ideas (shared with the React app)
+  desktop/              the Windows desktop widget
 ```
-
-Scripts are plain classic scripts loaded in order (see `index.html`): data, then core, then `app/app.js`, then one
-file per page. Each page adds itself to `P`: `P.x()` returns its HTML and `P.x.bind(root)` wires it up.
