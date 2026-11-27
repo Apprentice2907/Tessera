@@ -45,8 +45,10 @@ WB.PEOPLE = { Prince: '#7B61FF', Riya: '#FF4F96', Aman: '#1F7BFF', Sara: '#22A55
 // boards are kept in this browser, and a copy goes to this computer when Tessera runs from serve.py (core/store.js
 // brings them back if the browser loses them). Versions stay in the browser only.
 const mirrorTimers = {};
+// serve.py only listens on this computer: a copy opened from anywhere else (the one on Vercel) keeps boards in the browser only
+const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
 function mirror(k, text) {
-  if (!/^tessera\.wb\.(index|folders|b\.)/.test(k)) return;
+  if (!LOCAL || !/^tessera\.wb\.(index|folders|b\.)/.test(k)) return;
   clearTimeout(mirrorTimers[k]);
   mirrorTimers[k] = setTimeout(() => fetch('api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: k, value: text }) }).catch(() => {}), 600);
 }

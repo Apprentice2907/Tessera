@@ -36,11 +36,14 @@ function apply(text: string) {
 }
 
 // ---------- the copy on this computer (serve.py); on a plain static host there's no server, and this does nothing ----------
-const post = (key: string, value: string | null) => fetch('api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, value }), keepalive: !value || value.length < 60000 });
+// serve.py only ever listens on this computer, so a copy opened from anywhere else (the one on Vercel) doesn't ask it
+const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+const post =(key: string, value: string | null) => fetch('api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key, value }), keepalive: !value || value.length < 60000 });
 function push(key: string, value: string | null) { if (remote) post(key, value).catch(() => {}); }
 async function getJSON<T>(url: string): Promise<T> { const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) throw new Error(String(r.status)); return r.json(); }
 // another window saved something newer: take it
 async function pull() {
+  if (!LOCAL) return;
   let theirs: string | null;
   try { theirs = (await getJSON<{ value: string | null }>('api/state?key=' + KEY)).value; } catch { return; }
   remote = true;
