@@ -3,9 +3,19 @@
 .hstrip { position: absolute; left: var(--pad); right: var(--pad); bottom: 18px; }
 .hstrip .hb { height: clamp(48px, 9vh, 66px); cursor: pointer; transition: filter .15s; }
 .hstrip .hb:hover { filter: brightness(.96); }
-.heat { position: absolute; left: var(--pad); right: var(--pad); top: 64px; bottom: 16px; display: grid; grid-template-columns: 46px repeat(24, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 3px; align-content: stretch; }
-.heat > b { font-size: 11.5px; font-weight: 700; color: #9A9AA2; align-self: center; white-space: nowrap; }
-.heat > i { border-radius: 3px; background: var(--night-2); }
+/* the month: every finished day, newest at the top; about 15 rows show and the rest scroll, with soft edges */
+.heat-h, .heat-row { display: grid; grid-template-columns: 56px repeat(24, minmax(0, 1fr)); column-gap: 3px; }
+.heat-h { position: absolute; left: var(--pad); right: var(--pad); top: 62px; height: 14px; font-size: 10.5px; font-weight: 700; color: #5E5E66; white-space: nowrap; }
+.heat-h .k { color: #B4B4BC; }
+.heat { position: absolute; left: var(--pad); right: var(--pad); top: 84px; bottom: 16px; display: grid; grid-auto-rows: calc((100% - 14 * 4px) / 15); row-gap: 4px; align-content: start; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.heat::-webkit-scrollbar { display: none; }
+.heat.fade-t { -webkit-mask-image: linear-gradient(transparent, #000 24px); mask-image: linear-gradient(transparent, #000 24px); }
+.heat.fade-b { -webkit-mask-image: linear-gradient(#000 calc(100% - 24px), transparent); mask-image: linear-gradient(#000 calc(100% - 24px), transparent); }
+.heat.fade-t.fade-b { -webkit-mask-image: linear-gradient(transparent, #000 24px, #000 calc(100% - 24px), transparent); mask-image: linear-gradient(transparent, #000 24px, #000 calc(100% - 24px), transparent); }
+.heat-row { min-height: 0; }
+.heat-row b { display: flex; align-items: center; justify-content: space-between; padding-right: 10px; font-size: 12px; font-weight: 700; color: #E4E4E8; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.heat-row b span { font-weight: 400; color: #8A8A92; }
+.heat-row i { border-radius: 4px; background: var(--night-2); }
 
 /* the categories: a block of its colour each, like an app icon; the list scrolls with soft edges */
 .cats .copy { right: 64px; }
@@ -47,3 +57,10 @@
 .cn2 { display: flex; gap: 7px; padding-left: 22px; }
 .sw { width: 20px; height: 20px; border-radius: 50%; background: var(--cs); transition: box-shadow .15s; }
 .sw.on { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--cs); }
+/* phones: the title runs to two lines, so the month starts lower */
+@media (max-width: 640px) {
+  .heat-h { top: 80px; }
+  .heat { top: 100px; }
+  .heat-h, .heat-row { grid-template-columns: 50px repeat(24, minmax(0, 1fr)); column-gap: 2px; }
+  .heat-row b { padding-right: 7px; }
+}

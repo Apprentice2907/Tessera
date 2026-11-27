@@ -28,22 +28,34 @@ function StatTile({ c, area, g, tot, days, mon }: { c: Cat; area: string; g: str
   );
 }
 
-/** the month as a heat map: the squares light up row by row when the page opens */
+/** the month as a heat map: every finished day of the month, newest at the top, about 15 rows in view and the rest a
+ *  scroll away. A day with nothing logged keeps its empty squares. The rows light up from the top when the page opens. */
 function Heat({ past }: { past: number[] }) {
   const d = useData(s => s.d), ref = useRef<HTMLDivElement>(null);
+  const [fadeT, setFadeT] = useState(false), [fadeB, setFadeB] = useState(false);
+  const days = [...past].reverse();
+  // soft edges say there is more above or below
+  const fade = () => { const l = ref.current; if (!l) return; setFadeT(l.scrollTop > 2); setFadeB(l.scrollTop + l.clientHeight < l.scrollHeight - 2); };
+  useLayoutEffect(fade);
   useLayoutEffect(() => {
     if (!ref.current || reducedMotion()) return;
-    const ctx = gsap.context(() => { gsap.from('i', { opacity: 0, duration: 0.3, ease: 'power1.out', stagger: { each: 0.0015, from: 'start' }, delay: 0.2 }); }, ref);
+    const ctx = gsap.context(() => { gsap.from('.heat-row', { opacity: 0, y: -4, duration: 0.35, ease: 'power2.out', stagger: 0.03, delay: 0.2, clearProps: 'transform,opacity' }); }, ref);
     return () => ctx.revert();
   }, []);
-  return (
-    <div className="heat" ref={ref}>
-      {past.map(D => [
-        <b key={'b' + D}>{DAY_NAMES[dateOf(D).getDay()]} {dateOf(D).getDate()}</b>,
-        ...hoursOn(d, D).map((c, h) => { const k = catOf(d, c); return <i key={D + ':' + h} style={k ? { background: k.solid } : undefined} title={k ? k.name : ''} />; }),
-      ])}
+  return <>
+    <div className="heat-h" aria-hidden="true"><span />{Array.from({ length: 24 }, (_, h) => <span key={h} className={h % 12 ? '' : 'k'}>{h % 6 ? '' : h === 0 ? '12 AM' : h === 12 ? '12 PM' : '6'}</span>)}</div>
+    <div className={'heat' + (fadeT ? ' fade-t' : '') + (fadeB ? ' fade-b' : '')} ref={ref} onScroll={fade}>
+      {days.map(D => {
+        const day = dateOf(D);
+        return (
+          <div className="heat-row" key={D}>
+            <b><span>{DAY_NAMES[day.getDay()]}</span>{day.getDate()}</b>
+            {hoursOn(d, D).map((c, h) => { const k = catOf(d, c); return <i key={h} style={k ? { background: k.solid } : undefined} title={k ? k.name : ''} />; })}
+          </div>
+        );
+      })}
     </div>
-  );
+  </>;
 }
 
 export function Hours() {
@@ -98,7 +110,7 @@ export function Hours() {
       </Tile>
       <StatTile c={top[0]} area="sleep" g="g-green" tot={tot} days={month.length} mon={mon} />
       <Tile area="month" g="g-night" className="lead">
-        <Copy b={`${mon} so far.`} s={past.length ? 'Every finished day, one row.' : 'A new month. Each day shows up here as a row once it’s done.'} />
+        <Copy b={`${mon} so far.`} s={past.length ? 'Every finished day, newest first.' : 'A new month. Each day shows up here as a row once it’s done.'} />
         <Heat past={past} />
       </Tile>
       <Tile area="chips" g="g-cream" className="tall cats">
