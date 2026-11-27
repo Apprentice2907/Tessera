@@ -9,6 +9,7 @@ mockup/desktop/widget-position.json
 refernce/
 
 # Local tooling
+CLAUDE.local.md
 .claude/settings.local.json
 .claude/skills/
 skills-lock.json
