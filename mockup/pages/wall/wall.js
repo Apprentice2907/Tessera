@@ -7,7 +7,7 @@
   const { KIT, SH } = window.WALL_KIT;
   const PW = 1690, PH = 850;                      // the wall is drawn at this size, then scaled to fit
   const G = 70, O = 5;                             // a wire every 70px; the frame runs 5px in from the edge
-  const KEY = 'lo.walls.v2', OLD = 'lo.walls.v1';
+  const KEY = 'tessera.walls';
   const q = (s, r = document) => r.querySelector(s), qa = (s, r = document) => [...r.querySelectorAll(s)];
   const esc = v => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -36,98 +36,21 @@
   }
 
   // ---------- data ----------
-  const P = (id, x, y, r, art, title, date, text) => ({ id, kind: 'photo', x, y, r, art, title, date, text });
-  const K = (id, prop, x, wire) => ({ id, kind: 'prop', prop, x, y: wire - KIT[prop].hy, r: 0 });   // an object hung on the wire at y = wire
-  function seed() {
-    // memories were laid out on a narrower wall: spread them out, then clip each one onto its nearest wire
-    const W = (id, name, theme, parent, items) => ({ id, name, theme, parent, items: items.map((it, i) => { const o = { z: i + 1, ...it }; if (o.kind !== 'prop') { o.x = Math.round(250 + (o.x - 250) * 1.3); o.y = snapY(o, o.y); } return o; }) });
-    return {
-      cur: 'rajasthan', mode: 'evening',
-      walls: [
-        W('rajasthan', 'Rajasthan trip', 'trip', null, [
-          K('rk1', 'pot', 40, O), K('rk2', 'chai', -2, 635), K('rk3', 'map', 1330, 75), K('rk4', 'puppet', 1545, 75), K('rk5', 'ticket', 1340, 425), K('rk6', 'pottery', 1450, 565),
-          { id: 'g1', kind: 'place', x: 262, y: 96, r: -3, wall: 'jodhpur' },
-          { id: 'g2', kind: 'place', x: 556, y: 70, r: 2, wall: 'jaipur' },
-          { id: 'g3', kind: 'place', x: 850, y: 104, r: -2, wall: 'udaipur' },
-          { id: 'c1', kind: 'postcard', x: 300, y: 470, r: 3, art: 'desert', place: 'Rajasthan', date: 'Dec 2025', text: 'Nine days, three cities, one very long train ride. Came home with sand in my shoes and 600 photos.' },
-          { id: 'n1', kind: 'note', x: 650, y: 486, r: -4, text: '9 days · 3 cities\nthe best chai was\nat a station' },
-          P('p1', 880, 444, 4, 'train', 'The overnight train', '14 Dec', 'Jaipur to Jodhpur in a sleeper coach. Didn’t sleep, didn’t mind.'),
-        ]),
-        W('jodhpur', 'Jodhpur', 'trip', 'rajasthan', [
-          K('jk1', 'juttis', 30, 75), K('jk2', 'spices', 10, 565), K('jk3', 'puppet', 1530, 75), K('jk4', 'snack', 1430, 565), K('jk5', 'chai', 1060, 635),
-          P('j1', 262, 80, -3, 'mehrangarh', 'Mehrangarh Fort', '15 Dec', 'Walked up at 8 AM before the crowds. The view of the blue houses from the top is unreal.'),
-          P('j2', 500, 112, 2, 'bluecity', 'Lost in the blue lanes', '15 Dec', 'Took a wrong turn on purpose. Every door is a different shade of blue.'),
-          P('j3', 738, 78, -2, 'clocktower', 'Clock Tower market', '15 Dec', 'Spices, bangles, mirchi vada. Bought saffron for mom.'),
-          P('j4', 968, 120, 3, 'umaid', 'Umaid Bhawan', '16 Dec', 'Half palace, half hotel, all of it too fancy for us. Took the photo anyway.'),
-          { id: 'jc', kind: 'postcard', x: 320, y: 480, r: -2, art: 'bluecity', place: 'Jodhpur', date: '16 Dec', text: 'The Blue City at sunrise is the quietest place I have ever been. Mirchi vada at Shahi Samosa: 10/10.' },
-          { id: 'jn', kind: 'note', x: 690, y: 500, r: 3, text: 'Shahi Samosa\nmirchi vada\n10 / 10' },
-        ]),
-        W('jaipur', 'Jaipur', 'trip', 'rajasthan', [
-          K('yk1', 'pot', 40, O), K('yk2', 'pottery', 10, 565), K('yk3', 'bandhani', 1520, 75), K('yk4', 'kurta', 1400, 425), K('yk5', 'bangles', 1060, 635),
-          P('y1', 262, 84, 2, 'hawa', 'Hawa Mahal', '12 Dec', '953 little windows. We counted for a while, then gave up and got lassi.'),
-          P('y2', 500, 118, -3, 'amber', 'Amber Fort', '12 Dec', 'Climbed every staircase. Legs remembered it for three days.'),
-          P('y3', 740, 80, 3, 'nahargarh', 'Sunset at Nahargarh', '13 Dec', 'The whole city lit up below us. Best 40 minutes of the trip.'),
-          P('y4', 970, 116, -2, 'bazaar', 'Bapu Bazaar', '13 Dec', 'Bargained for mojaris for twenty minutes. Saved 60 rupees. Worth it.'),
-          { id: 'yc', kind: 'postcard', x: 330, y: 482, r: 2, art: 'hawa', place: 'Jaipur', date: '13 Dec', text: 'Pink city, pink sky. Got blue pottery for mom and a very pink kurta for me.' },
-          { id: 'yn', kind: 'note', x: 700, y: 492, r: -3, text: 'blue pottery\nfor mom ✓' },
-        ]),
-        W('udaipur', 'Udaipur', 'trip', 'rajasthan', [
-          K('uk1', 'pot', 40, O), K('uk2', 'flowers', 30, 565), K('uk3', 'miniature', 1470, 75), K('uk4', 'chai', 1400, 565), K('uk5', 'shades', 1090, 635),
-          P('u1', 262, 96, -2, 'pichola', 'Boat on Lake Pichola', '18 Dec', 'Sunset boat ride. The Lake Palace really does look like it floats.'),
-          P('u2', 500, 74, 3, 'citypalace', 'City Palace', '18 Dec', 'So many balconies. Every window had a view of the lake.'),
-          P('u3', 742, 110, -3, 'sajjangarh', 'Sajjangarh at dusk', '19 Dec', 'Monsoon Palace, no monsoon, still beautiful.'),
-          P('u4', 972, 82, 2, 'bagore', 'Dance at Bagore ki Haveli', '19 Dec', 'She danced with nine pots on her head. NINE.'),
-          { id: 'uc', kind: 'postcard', x: 330, y: 480, r: -3, art: 'pichola', place: 'Udaipur', date: '19 Dec', text: 'City of lakes. Slowest, softest two days of the trip. Want to come back for a whole week.' },
-          { id: 'un', kind: 'note', x: 700, y: 500, r: 2, text: 'come back\nfor a whole week' },
-        ]),
-        W('navratri', 'Navratri 2026', 'festival', null, [
-          K('vk1', 'dandiya', 70, 75), K('vk2', 'diyas', -2, 635), K('vk3', 'kurta', 1440, 75), K('vk4', 'bangles', 1420, 495), K('vk5', 'puja', 1080, 635),
-          P('v1', 262, 104, -3, 'garba', 'Garba, night 1', '22 Sep', 'Started shy, ended up in the inner circle. Danced till 2 AM.'),
-          P('v2', 500, 74, 2, 'dandiya', 'Dandiya with the gang', '25 Sep', 'Only got hit on the knuckles twice. Personal best.'),
-          P('v3', 738, 112, -2, 'pandal', 'Pandal hopping', '28 Sep', 'Seven pandals in one night. The lights at the last one were the best.'),
-          P('v4', 970, 86, 3, 'kurta', 'Day 9 outfit', '30 Sep', 'The pink kurta from Jaipur finally got its moment.'),
-          { id: 'vc', kind: 'postcard', x: 330, y: 486, r: 2, art: 'garba', place: 'Navratri', date: 'Sep 2026', text: 'Nine nights of music and colour. My feet still hurt and I would do it again tomorrow.' },
-          { id: 'vn', kind: 'note', x: 700, y: 500, r: -3, text: 'danced till 2 AM\nfeet: destroyed' },
-        ]),
-        W('football', 'Football season', 'sport', null, [
-          K('fk1', 'boots', 30, 75), K('fk2', 'ball', 40, 565), K('fk3', 'jersey', 1430, 75), K('fk4', 'whistle', 1450, 425), K('fk5', 'medal', 1590, 425), K('fk6', 'bottle', 1430, 635),
-          P('f1', 262, 90, -2, 'turf', 'Thursday turf', 'Every Thu', 'Turf, sector 21, 7 PM. Same ten people, never the same game.'),
-          P('f2', 500, 118, 3, 'goal', 'First goal of the season', '4 Sep', 'Top corner, weak foot. Nobody believes me but it happened.'),
-          P('f3', 740, 76, -3, 'team', 'The team', '20 Oct', 'After winning the inter-hostel final. Number 10, obviously.'),
-          P('f4', 972, 110, 2, 'rain', 'The rain match', '9 Aug', 'Played through a thunderstorm. Ball stopped in a puddle twice.'),
-          { id: 'fn', kind: 'note', x: 340, y: 500, r: -3, text: '12 goals\n9 assists\n1 sprained ankle' },
-          { id: 'fn2', kind: 'note', x: 640, y: 512, r: 3, text: 'next: learn\nto use my left foot' },
-        ]),
-        W('cars', 'Hot Wheels collection', 'hobby', null, [
-          K('hk1', 'carcard', 40, 75), K('hk2', 'track', 24, 495), K('hk3', 'card2', 1440, 75), K('hk4', 'wishlist', 1470, 425), K('hk5', 'cars', 560, 635), K('hk6', 'cars', 980, 635),
-          P('h1', 262, 90, -2, 'carwall', 'The collection so far', 'Nov 2026', '142 cars. Most of them still smell like the shop.'),
-          P('h2', 500, 116, 3, 'loop', 'First loop-the-loop', 'Mar 2026', 'Took eleven tries. The purple one finally made it all the way round.'),
-          P('h3', 740, 78, -3, 'race', 'Race day on the stairs', 'Jun 2026', 'Best of five down the stairs. The red 7 won three of them.'),
-          P('h4', 970, 112, 2, 'haul', 'Sunday haul', 'Oct 2026', 'Four new cards from the shop near the metro. One of them is the rare one.'),
-          { id: 'hn', kind: 'note', x: 340, y: 500, r: -3, text: '142 cars\n9 still on card\n1 very rare one' },
-          { id: 'hn2', kind: 'note', x: 700, y: 500, r: 3, text: 'next: a glass\ncase for the\nrare ones' },
-        ]),
-      ],
-    };
-  }
-  // a wall saved before objects existed keeps everything, gets its objects, and every memory is clipped onto a wire
-  function upgrade(old) {
-    const fresh = seed();
-    old.walls.forEach(w => {
-      const s = fresh.walls.find(x => x.id === w.id), props = s ? s.items.filter(i => i.kind === 'prop') : [];
-      w.items = [...props, ...w.items.map(i => ({ ...i, z: (i.z || 1) + props.length, y: snapY(i, i.y) }))];
-    });
-    fresh.walls.forEach(s => { if (!old.walls.some(w => w.id === s.id)) old.walls.push(s); });
-    return old;
-  }
+  // the first visit: one empty wall to start from
+  const seed = () => ({ cur: 'first', mode: 'evening', walls: [{ id: 'first', name: 'My wall', theme: 'everyday', parent: null, items: [] }] });
   let D;
   try { D = JSON.parse(localStorage.getItem(KEY)); } catch { D = null; }
-  if (!D || !Array.isArray(D.walls)) {
-    let old = null; try { old = JSON.parse(localStorage.getItem(OLD)); } catch { /* nothing saved */ }
-    D = old && Array.isArray(old.walls) ? upgrade(old) : seed();
-  }
+  if (!D || !Array.isArray(D.walls) || !D.walls.length) D = seed();
   let saveT = 0;
-  const save = () => { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(D)); } catch { toast('Could not save: browser storage is full. Remove a big photo.'); } }, 300); };
+  // saved in this browser, and a copy goes to this computer (core/store.js), so a cleared browser gets its walls back
+  const save = () => {
+    clearTimeout(saveT);
+    saveT = setTimeout(() => {
+      const text = JSON.stringify(D);
+      try { localStorage.setItem(KEY, text); } catch { toast('This browser is full, so the wall is only saved on this computer. Remove a big photo.'); }
+      STORE.mirror(KEY, text);
+    }, 300);
+  };
   const wall = id => D.walls.find(w => w.id === (id || D.cur));
   const root = w => { while (w && w.parent) w = wall(w.parent); return w; };
   const count = w => w.items.reduce((n, it) => n + (it.kind === 'place' ? count(wall(it.wall) || { items: [] }) : it.kind === 'prop' ? 0 : 1), 0);
@@ -493,7 +416,10 @@
     render();
   }
   addEventListener('resize', () => { if (el && document.contains(el)) fit(); });
-  window.WALL = { mount, data: () => D, go, add, addProp, THEMES, KIT, snapY, wire: { G, O }, reset: () => { D = seed(); save(); render(); } };
+  // the newest photos and postcards across every wall, newest first (Home shows two); ids carry the time they were made
+  const madeAt = it => parseInt(String(it.id).slice(1, 9), 36) || 0;
+  const recent = n => D.walls.flatMap(w => w.items.filter(it => it.kind === 'photo' || it.kind === 'postcard')).sort((a, b) => madeAt(b) - madeAt(a)).slice(0, n).map(it => ({ src: src(it), title: it.title || it.place || '', date: it.date || '' }));
+  window.WALL = { mount, data: () => D, recent, go, add, addProp, THEMES, KIT, snapY, wire: { G, O } };
 })();
 
 // the Wall page in the app (app/app.js)

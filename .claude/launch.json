@@ -4,8 +4,20 @@
     {
       "name": "mockup",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["mockup/serve.py"],
+      "runtimeArgs": [
+        "mockup/serve.py"
+      ],
       "port": 5178
+    },
+    {
+      "name": "tessera-test",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "mockup/serve.py",
+        "5199",
+        "mockup/.data/test"
+      ],
+      "port": 5199
     }
   ]
 }

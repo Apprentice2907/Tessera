@@ -14,43 +14,39 @@ const CAT_PALETTE = [
   { name: 'Grey',   solid: '#8E8E93', fg: '#fff' },
 ];
 const freePalette = () => CAT_PALETTE.filter(p => !CATS.some(c => c.solid === p.solid));
-const X_ICON = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 3l6 6M9 3 3 9"/></svg>';
+const DEL_ICON = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 3l6 6M9 3 3 9"/></svg>';
 
 P.hours = () => {
   if (!CAT(S.brush)) S.brush = CATS[0].id; // the brush was deleted, maybe in another window
-  const today = HOUR_DAYS[0], past = HOUR_DAYS.filter(d => d.kind === 'past');
-  const tot = {}; past.forEach(d => d.cells.forEach(c => { if (c) tot[c] = (tot[c] || 0) + 1; }));
-  const logged = today.cells.filter(Boolean).length;
-  const sleep = tot.sleep || 0, code = tot.code || 0, social = tot.waste || 0;
+  const cells = hoursOn(T), month = monthSoFar(), past = month.slice(0, -1);
+  const tot = {}; month.forEach(D => hoursOn(D).forEach(c => { if (c) tot[c] = (tot[c] || 0) + 1; }));
+  const logged = cells.filter(Boolean).length, mon = MONTHS[TODAY.getMonth()];
+  // the three categories with the most hours this month (until there are any, the first three)
+  const top = [...CATS].sort((x, y) => (tot[y.id] || 0) - (tot[x.id] || 0)).slice(0, 3);
   const canAdd = freePalette().length || S.newCat;
-  const catRow = c => `<div class="crow${S.catDel === c.id ? ' deleting' : ''}"><button class="cat ${S.brush === c.id ? 'on' : ''}" data-brush="${c.id}" style="--cs:${c.solid};--cf:${c.fg || '#fff'}" aria-pressed="${S.brush === c.id}" title="Double-click to delete"><span>${esc(c.name)}</span><small>${tot[c.id] || 0}h</small><i class="tick" aria-hidden="true">${TICK}</i></button>${S.catDel === c.id ? `<button class="cdel" data-cdel="${c.id}" style="color:${c.solid}" aria-label="Delete ${esc(c.name)}" title="Delete ${esc(c.name)}">${X_ICON}</button>` : ''}</div>`;
+  const catRow = c => `<div class="crow${S.catDel === c.id ? ' deleting' : ''}"><button class="cat ${S.brush === c.id ? 'on' : ''}" data-brush="${c.id}" style="--cs:${c.solid};--cf:${c.fg || '#fff'}" aria-pressed="${S.brush === c.id}" title="Double-click to delete"><span>${esc(c.name)}</span><small>${tot[c.id] || 0}h</small><i class="tick" aria-hidden="true">${TICK}</i></button>${S.catDel === c.id ? `<button class="cdel" data-cdel="${c.id}" style="color:${c.solid}" aria-label="Delete ${esc(c.name)}" title="Delete ${esc(c.name)}">${DEL_ICON}</button>` : ''}</div>`;
+  const statTile = (c, area, g) => `<section class="tile ${g}" style="grid-area:${area}">
+      <div class="copy"><b>${esc(c.name)}.</b> <span>${mon} so far.</span></div>
+      <div class="stat">${tot[c.id] || 0}<small>h</small></div>
+      <div class="aside">${((tot[c.id] || 0) / month.length).toFixed(1)} h a day</div>
+    </section>`;
   return `<main class="bento p-hours">
     <section class="tile g-white wide" style="grid-area:strip">
       <div class="copy"><b>Today, hour by hour.</b> <span>${logged} of 24 logged. Click an hour to paint it ${esc(CAT(S.brush).name)}.</span></div>
-      <div class="hstrip"><div class="strip" id="hstrip">${stripHTML(today.cells)}</div><div class="ticks">${ticksHTML()}</div></div>
+      <div class="hstrip"><div class="strip" id="hstrip">${stripHTML(cells)}</div><div class="ticks">${ticksHTML()}</div></div>
     </section>
-    <section class="tile g-green" style="grid-area:sleep">
-      <div class="copy"><b>Sleep.</b> <span>${(sleep / past.length).toFixed(1)} h a night.</span></div>
-      <div class="stat">${sleep}<small>h</small></div>
-    </section>
+    ${statTile(top[0], 'sleep', 'g-green')}
     <section class="tile g-night lead" style="grid-area:month">
-      <div class="copy"><b>November so far.</b> <span>Every completed day, one row.</span></div>
-      <div class="heat">${past.map(d => `<b>${DAY_NAMES[d.date.getDay()]} ${d.date.getDate()}</b>` + d.cells.map(c => { const k = c && CAT(c); return `<i style="${k ? 'background:' + k.solid : ''}" title="${k ? esc(k.name) : ''}"></i>`; }).join('')).join('')}</div>
+      <div class="copy"><b>${mon} so far.</b> <span>${past.length ? 'Every finished day, one row.' : 'A new month. Each day shows up here as a row once it’s done.'}</span></div>
+      <div class="heat">${past.map(D => `<b>${DAY_NAMES[dateOf(D).getDay()]} ${dateOf(D).getDate()}</b>` + hoursOn(D).map(c => { const k = c && CAT(c); return `<i style="${k ? 'background:' + k.solid : ''}" title="${k ? esc(k.name) : ''}"></i>`; }).join('')).join('')}</div>
     </section>
     <section class="tile g-cream tall cats" style="grid-area:chips">
       <div class="copy"><b>Categories.</b> <span>Pick one to paint.</span></div>
       <button class="up cplus${S.newCat ? ' open' : ''}" id="cat-add" aria-label="${S.newCat ? 'Cancel new category' : 'New category'}" aria-expanded="${!!S.newCat}"${canAdd ? '' : ' disabled title="All colours are in use"'}><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M8 3 V13 M3 8 H13"/></svg></button>
       <div class="clist" data-keep="clist">${newCatHTML()}${CATS.map(catRow).join('')}</div>
     </section>
-    <section class="tile g-orange" style="grid-area:code">
-      <div class="copy"><b>Coding.</b> <span>Since Nov 1.</span></div>
-      <div class="stat">${code}<small>h</small></div>
-    </section>
-    <section class="tile g-yellow" style="grid-area:social">
-      <div class="copy"><b>Social media.</b> <span>The one to keep low.</span></div>
-      <div class="stat">${social}<small>h</small></div>
-      <div class="aside">${(social / past.length * 60).toFixed(0)} min a day</div>
-    </section>
+    ${statTile(top[1] || top[0], 'code', 'g-orange')}
+    ${statTile(top[2] || top[0], 'social', 'g-yellow')}
   </main>`;
 };
 
@@ -71,7 +67,7 @@ P.hours.bind = root => {
   bindCategories(root);
   $('#hstrip', root).onclick = e => {
     const r = e.currentTarget.getBoundingClientRect(), h = Math.min(23, Math.max(0, Math.floor((e.clientX - r.left) / r.width * 24)));
-    const cells = HOUR_DAYS[0].cells; cells[h] = cells[h] === S.brush ? null : S.brush; STORE.claim(HOUR_DAYS[0], h); render();
+    const cells = hoursFor(T); cells[h] = cells[h] === S.brush ? null : S.brush; STORE.claim(T, h); render();
   };
 };
 
@@ -100,7 +96,7 @@ function bindCategories(root) {
     const c = CAT(b.dataset.cdel); S.catDel = null;
     if (CATS.length === 1) { render(); return toast('Keep at least one category'); }
     CATS = CATS.filter(x => x !== c);
-    HOUR_DAYS.forEach(d => d.cells.forEach((x, i) => { if (x === c.id) d.cells[i] = null; }));
+    Object.values(HOURS).forEach(cells => cells.forEach((x, i) => { if (x === c.id) cells[i] = null; }));
     if (S.brush === c.id) S.brush = CATS[0].id;
     render(); toast(`Deleted ${c.name}`);
   });

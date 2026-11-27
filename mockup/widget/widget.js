@@ -14,13 +14,13 @@ const desk = () => window.pywebview?.api;
 let fresh = null; // the task just added, so it slides in
 
 function draw() {
-  const tasks = tasksForDay(0), st = t => statusOf(0, t.id);
-  const starred = t => !!STARS['0|' + t.id];
+  const tasks = tasksForDay(T), st = t => statusOf(T, t.id);
+  const starred = t => !!STARS[T + '|' + t.id];
   const order = (a, b) => (starred(b) - starred(a)) || (startOf(a) - startOf(b));
   const prog = tasks.filter(t => st(t) === 'prog').sort(order), todo = tasks.filter(t => st(t) === 'todo').sort(order), done = tasks.filter(t => st(t) === 'done').sort(order);
   const n = tasks.length, d = TODAY;
   const row = t => {
-    const note = PNOTES['0|' + t.id];
+    const note = PNOTES[T + '|' + t.id];
     return `<div class="row ${st(t)}${t.id === fresh ? ' fresh' : ''}" style="--c:${(CALS[t.cal] || CALS.code).color}">
       <button class="chk" data-tick="${t.id}" aria-label="${st(t) === 'done' ? 'Untick' : 'Tick'} ${esc(t.title)}" aria-pressed="${st(t) === 'done'}">${CHECK}</button>
       <span class="t">${esc(t.title)}${note && st(t) === 'prog' ? `<i>${esc(note)}</i>` : ''}</span>${t.time ? `<time>${t.time}</time>` : ''}</div>`;
@@ -32,9 +32,9 @@ function draw() {
     <div class="grip" data-grip title="Drag to resize" aria-hidden="true"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M10.5 4.5l-6 6M10.5 8.5l-2 2"/></svg></div>`
       : '<a class="open" href="./#today" target="_top">Open Tessera</a>'}
     <div class="card">
-      <div class="card-head"><strong>${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}</strong><span class="pill">${done.length} of ${n} done</span></div>
+      <div class="card-head"><strong>${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}</strong>${n ? `<span class="pill">${done.length} of ${n} done</span>` : ''}</div>
       <div class="bar" aria-hidden="true"><i style="width:${n ? done.length / n * 100 : 0}%"></i></div>
-      <div class="rows">${[...prog, ...todo].map(row).join('') || '<div class="empty">All clear for today.</div>'}${done.length ? `<div class="sub">Done · ${done.length}</div>${done.map(row).join('')}` : ''}</div>
+      <div class="rows">${[...prog, ...todo].map(row).join('') || `<div class="empty">${n ? 'All clear for today.' : 'Nothing planned. Add a task below.'}</div>`}${done.length ? `<div class="sub">Done · ${done.length}</div>${done.map(row).join('')}` : ''}</div>
       <div class="foot">
         <form class="add" autocomplete="off"><input id="add" placeholder="Add a task, e.g. Call home at 7pm" aria-label="New task for today. Add a time like at 7pm"><span class="when" hidden></span><button>Add</button></form>
       </div>
@@ -51,9 +51,9 @@ function bind() {
   if (cl) cl.onclick = () => desk()?.close();
   // tick: done, or back to the list; a task with a time fills its hours in Hours
   $$('[data-tick]', W).forEach(b => b.onclick = () => {
-    const k = '0|' + b.dataset.tick;
+    const k = T + '|' + b.dataset.tick;
     STATUS[k] = STATUS[k] === 'done' ? 'todo' : 'done';
-    STORE.syncHours(0); STORE.save(); draw();
+    STORE.syncHours(T); STORE.save(); draw();
     $(`[data-tick="${b.dataset.tick}"]`, W)?.focus();
   });
   // add: "at 7pm" sets the time; the category is picked the same way as in Today
@@ -63,7 +63,7 @@ function bind() {
     e.preventDefault();
     const raw = input.value.trim(); if (!raw) return input.focus();
     const tm = sortTime(raw), title = tm ? tm.title : raw;
-    const o = { id: 'o' + Date.now(), day: 0, cal: sortTask(title).cal, title };
+    const o = { id: 'o' + Date.now(), day: T, cal: sortTask(title).cal, title };
     if (tm) { o.s = tm.s; o.time = fmtTime(tm.s); }
     ONEOFFS.push(o); fresh = o.id;
     STORE.save(); draw(); $('#add', W).focus();
@@ -115,3 +115,5 @@ if (DESK) {
 STORE.restore(() => { if (document.activeElement?.id !== 'add') draw(); });
 STORE.sync();
 draw();
+// the desktop widget stays open for days: at midnight it turns to the new day
+setInterval(() => { if (tickClock() && document.activeElement?.id !== 'add') { STORE.sync(); draw(); } }, 30000);

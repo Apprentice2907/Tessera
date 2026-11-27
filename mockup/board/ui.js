@@ -507,43 +507,12 @@ $('#drawer').addEventListener('click', async e => {
 });
 $('#drawer').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('[data-b]')) e.target.click(); if (e.key === 'Escape') UI.toggleDrawer(); e.stopPropagation(); });
 
-// ---------- first run: a few boards to start from ----------
-function build(list, by = 'Prince') {
-  const objs = {}, map = {}; let z = 1;
-  list.filter(o => o.type !== 'line').forEach(({ _k, ...o }) => { const id = uid(); map[_k] = id; objs[id] = { ...o, id, z: o.type === 'section' ? 0 : z++, rev: 1, by: o.by || by, at: Date.now() - 86400000 }; });
-  list.filter(o => o.type === 'line').forEach(l => { const id = uid(); objs[id] = { ...l, id, a: { id: map[l.a.k] }, b: { id: map[l.b.k] }, z: z++, rev: 1, by, at: Date.now() }; });
-  return objs;
-}
+// ---------- first run: one empty board to start from ----------
 function seed() {
   if (WB.index().length) return;
-  WB.LS.set('lo.wb.folders', ['Personal', 'Projects']);
-  const people = [{ name: 'Prince', role: 'owner' }, { name: 'Riya', role: 'editor' }, { name: 'Aman', role: 'editor' }, { name: 'Sara', role: 'viewer' }];
-  const make = (id, name, folder, list) => {
-    const objs = build(list);
-    WB.LS.set('lo.wb.b.' + id, { id, name, folder, objs, meta: { members: people, settings: { grid: true, bg: 'paper' } } });
-    const idx = WB.index(); idx.push({ id, name, folder, updated: Date.now() - Math.random() * 7200000, count: Object.keys(objs).length, owner: 'Prince' }); WB.LS.set('lo.wb.index', idx);
-  };
-  const N = (k, x, y, text, color, w = 210, h = 210, by) => ({ _k: k, type: 'note', x, y, w, h, text, color, fs: 'm', by });
-  const ln = (a, b, style = 'curve') => ({ type: 'line', a: { k: a }, b: { k: b }, style, arrow: 'end', sw: 2, color: '#1C1C1E' });
-  const tpl = (k, dx = 0, dy = 0) => WB.TEMPLATES[k].build().map(o => o.type === 'line' ? o : { ...o, x: o.x + dx, y: o.y + dy });
-  make('ideas-2026', 'Ideas 2026', 'Personal', [
-    { _k: 'h', type: 'text', x: 0, y: -118, w: 520, h: 56, text: 'Ideas 2026', fs: 'xl', bold: true },
-    { _k: 'sub', type: 'text', x: 2, y: -58, w: 640, h: 30, text: 'Dump it here, connect what matters.', fs: 'm', color: '#5C5C62' },
-    { _k: 'yt', type: 'section', x: 0, y: 0, w: 1000, h: 330, text: 'YouTube channel', color: '#FFF7DD' },
-    N('n1', 30, 84, 'Niche: dev vlogs + building in public', '#FFE380'), N('n2', 270, 84, '1 long video + 3 shorts every week', '#FFC27A', 210, 210, 'Riya'),
-    N('n3', 510, 84, 'Gear: phone + lav mic first', '#A8EBBB', 210, 210, 'Aman'), N('n4', 750, 84, 'Names: “Ship Weekly”', '#FFB3D1'),
-    ln('n1', 'n2'),
-    { _k: 'sq', type: 'section', x: 1060, y: 0, w: 520, h: 330, text: 'Side quests', color: '#EAF5FF' },
-    N('n5', 1090, 84, 'Learn chai latte art ☕', '#A9D8FF'),
-    { _k: 'big', type: 'shape', x: 1330, y: 96, w: 210, h: 190, kind: 'star', fill: '#FFE380', text: 'BIG ONE!', fs: 'm', bold: true },
-    { _k: 'st', type: 'stamp', x: 448, y: 62, w: 56, h: 56, emoji: '🔥', by: 'Riya' },
-    { _k: 'c1', type: 'comment', x: 944, y: 58, w: 32, h: 32, thread: [{ by: 'Riya', at: Date.now() - 3600000, text: 'Love the Ship Weekly name! 🙌' }, { by: 'Prince', at: Date.now() - 1800000, text: 'Same, checking if the handle is free.' }], resolved: false, by: 'Riya' },
-    { _k: 'poll', type: 'poll', x: 0, y: 390, w: 320, h: WB.pollHeight(3), q: 'Which upload day?', opts: [{ t: 'Saturday', v: { Riya: 1, Aman: 1 } }, { t: 'Sunday', v: { Sara: 1 } }, { t: 'Wednesday', v: {} }] },
-    { _k: 'lk', type: 'link', x: 380, y: 390, w: 300, h: 90, url: 'https://www.youtube.com/@shipweekly', title: 'YouTube video' },
-  ]);
-  make('youtube-plan', 'YouTube channel plan', 'Personal', tpl('brainstorm').map((o, i) => o.type === 'note' ? { ...o, text: ['Hook in 5 s', 'Show the bug first', 'B-roll of the desk', 'End with a question', '', '', '', ''][i - 2] ?? '' } : o.type === 'text' ? { ...o, text: 'What makes a video worth finishing?' } : o));
-  make('startup-live-os', 'Startup: Tessera', 'Projects', tpl('flowchart'));
-  make('portfolio-site', 'Portfolio site', 'Projects', tpl('kanban'));
+  WB.LS.set('tessera.wb.folders', ['Personal', 'Projects']);
+  WB.LS.set('tessera.wb.b.ideas', { id: 'ideas', name: 'Ideas', folder: 'Personal', objs: {}, meta: { members: [{ name: WB.me.name, role: 'owner' }], settings: { grid: true, bg: 'paper' } } });
+  WB.LS.set('tessera.wb.index', [{ id: 'ideas', name: 'Ideas', folder: 'Personal', updated: Date.now(), count: 0, owner: WB.me.name }]);
 }
 
 // ---------- wiring ----------
@@ -561,19 +530,6 @@ addEventListener('resize', () => { ctx(); WB.emit('cam'); });
 
 document.body.style.setProperty('--me', WB.me.color);
 seed();
-// the sample section titles used to start with an emoji; boards saved before that get the plain titles once.
-// Only these exact sample titles change: a title someone wrote themselves keeps whatever it has.
-(function plainTitles() {
-  if (WB.LS.get('lo.wb.mig.plain-titles')) return;
-  const FIX = { '💡 Brainstorm': 'Brainstorm', '✅ Went well': 'Went well', '🔧 To improve': 'To improve', '🚀 Actions': 'Actions', '📺 YouTube channel': 'YouTube channel', '🍵 Side quests': 'Side quests' };
-  WB.index().forEach(({ id }) => {
-    const b = WB.LS.get('lo.wb.b.' + id); if (!b || !b.objs) return;
-    let n = 0;
-    Object.values(b.objs).forEach(o => { if (o && o.type === 'section' && FIX[o.text]) { o.text = FIX[o.text]; n++; } });
-    if (n) WB.LS.set('lo.wb.b.' + id, b, true);
-  });
-  WB.LS.set('lo.wb.mig.plain-titles', 1, true);
-})();
 const want = new URLSearchParams(location.search).get('b');
-if (!WB.openBoard(want)) WB.openBoard(WB.index().find(b => b.id === 'ideas-2026')?.id || WB.index()[0]?.id || WB.createBoard('Untitled board', 'Personal').id);
+if (!WB.openBoard(want)) WB.openBoard(WB.index().find(b => b.id === 'ideas')?.id || WB.index()[0]?.id || WB.createBoard('Untitled board', 'Personal').id);
 WB.setTool('select');

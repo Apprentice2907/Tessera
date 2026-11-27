@@ -1,5 +1,5 @@
 // Tessera · Board — core: state, storage, undo/redo, autosave, versions and live sync between tabs.
-// No server: boards are saved in this browser (localStorage) and every open tab of the board is a live
+// Boards are saved in this browser (localStorage), with a copy on this computer under serve.py; every open tab is a live
 // collaborator through a BroadcastChannel. The real app swaps both for its own backend (see the notes at the end).
 'use strict';
 
@@ -32,46 +32,58 @@ WB.PEOPLE = { Prince: '#7B61FF', Riya: '#FF4F96', Aman: '#1F7BFF', Sara: '#22A55
 (function initMe() {
   const q = new URLSearchParams(location.search);
   let me = null;
-  try { me = JSON.parse(sessionStorage.getItem('lo.wb.me')); } catch { /* new tab */ }
+  try { me = JSON.parse(sessionStorage.getItem('tessera.wb.me')); } catch { /* new tab */ }
   const as = q.get('as');
   if (!me || (as && me.name !== as)) me = { id: uid('u'), name: as || 'Prince' };
   me.color = WB.PEOPLE[me.name] || '#8E8E93';
-  try { sessionStorage.setItem('lo.wb.me', JSON.stringify(me)); } catch { /* private mode */ }
+  try { sessionStorage.setItem('tessera.wb.me', JSON.stringify(me)); } catch { /* private mode */ }
   WB.me = me;
   WB.linkRole = q.get('role');
 })();
 
 // ---------- storage ----------
+// boards are kept in this browser, and a copy goes to this computer when Tessera runs from serve.py (core/store.js
+// brings them back if the browser loses them). Versions stay in the browser only.
+const mirrorTimers = {};
+function mirror(k, text) {
+  if (!/^tessera\.wb\.(index|folders|b\.)/.test(k)) return;
+  clearTimeout(mirrorTimers[k]);
+  mirrorTimers[k] = setTimeout(() => fetch('api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: k, value: text }) }).catch(() => {}), 600);
+}
 const LS = WB.LS = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
-  set(k, v, quiet) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { if (!quiet) WB.emit('toast', 'Could not save: this board is too big for browser storage. Remove a large image.'); return false; } },
-  del(k) { try { localStorage.removeItem(k); } catch { /* ignore */ } },
+  set(k, v, quiet) {
+    const text = JSON.stringify(v);
+    mirror(k, text);
+    try { localStorage.setItem(k, text); return true; } catch (e) { if (!quiet) WB.emit('toast', 'This board is too big for browser storage, so it is only saved on this computer. Remove a large image.'); return false; }
+  },
+  del(k) { mirror(k, null); try { localStorage.removeItem(k); } catch { /* ignore */ } },
 };
-WB.index = () => LS.get('lo.wb.index', []);
-WB.folders = () => LS.get('lo.wb.folders', ['Personal', 'Projects']);
-WB.setFolders = f => { LS.set('lo.wb.folders', f); send({ t: 'index' }); WB.emit('index'); };
+WB.index = () => LS.get('tessera.wb.index', []);
+WB.folders = () => LS.get('tessera.wb.folders', ['Personal', 'Projects']);
+WB.setFolders = f => { LS.set('tessera.wb.folders', f); send({ t: 'index' }); WB.emit('index'); };
 function writeIndex(b, objs) {
   const idx = WB.index().filter(x => x.id !== b.id);
   idx.push({ id: b.id, name: b.name, folder: b.folder, updated: Date.now(), count: Object.keys(objs).length, owner: (b.meta.members || []).find(m => m.role === 'owner')?.name });
-  LS.set('lo.wb.index', idx);
+  LS.set('tessera.wb.index', idx);
 }
-WB.getBoard = id => LS.get('lo.wb.b.' + id, null);
+WB.getBoard = id => LS.get('tessera.wb.b.' + id, null);
 WB.createBoard = (name, folder, objs = {}, id = uid('b')) => {
   const b = { id, name, folder, objs, meta: { members: [{ name: WB.me.name, role: 'owner' }], settings: { grid: true, bg: 'paper' } } };
-  LS.set('lo.wb.b.' + id, b); writeIndex(b, objs); send({ t: 'index' }); WB.emit('index');
+  LS.set('tessera.wb.b.' + id, b); writeIndex(b, objs); send({ t: 'index' }); WB.emit('index');
   return b;
 };
 WB.renameBoard = (id, name) => {
   const b = id === WB.board?.id ? WB.board : WB.getBoard(id); if (!b || !name.trim()) return;
   b.name = name.trim();
   if (id === WB.board?.id) { WB.save(true); send({ t: 'meta', name: b.name }); WB.emit('board'); }
-  else { LS.set('lo.wb.b.' + id, b); writeIndex(b, b.objs); }
+  else { LS.set('tessera.wb.b.' + id, b); writeIndex(b, b.objs); }
   send({ t: 'index' }); WB.emit('index');
 };
 WB.moveBoard = (id, folder) => {
   const b = id === WB.board?.id ? WB.board : WB.getBoard(id); if (!b) return;
   b.folder = folder;
-  if (id === WB.board?.id) WB.save(true); else { LS.set('lo.wb.b.' + id, b); writeIndex(b, b.objs); }
+  if (id === WB.board?.id) WB.save(true); else { LS.set('tessera.wb.b.' + id, b); writeIndex(b, b.objs); }
   send({ t: 'index' }); WB.emit('index'); WB.emit('board');
 };
 WB.duplicateBoard = id => {
@@ -80,8 +92,8 @@ WB.duplicateBoard = id => {
   return b;
 };
 WB.deleteBoard = id => {
-  LS.del('lo.wb.b.' + id); LS.del('lo.wb.v.' + id);
-  LS.set('lo.wb.index', WB.index().filter(x => x.id !== id));
+  LS.del('tessera.wb.b.' + id); LS.del('tessera.wb.v.' + id);
+  LS.set('tessera.wb.index', WB.index().filter(x => x.id !== id));
   send({ t: 'index', deleted: id }); WB.emit('index');
   if (id === WB.board?.id) { const next = WB.index()[0]; if (next) WB.openBoard(next.id); else WB.openBoard(WB.createBoard('Untitled board', 'Personal').id); }
 };
@@ -120,19 +132,19 @@ WB.save = now => {
   clearTimeout(saveT);
   const write = () => {
     const b = { ...WB.board, objs: WB.objs };
-    const ok = LS.set('lo.wb.b.' + b.id, b);
+    const ok = LS.set('tessera.wb.b.' + b.id, b);
     if (ok) writeIndex(b, WB.objs);
     if (ok && (WB.snapDue || Date.now() - WB.lastSnap > 120000)) WB.snapshot('Autosave');
     WB.status = ok ? 'saved' : 'error'; WB.emit('status');
   };
   if (now) write(); else saveT = setTimeout(write, 450);
 };
-WB.versions = () => LS.get('lo.wb.v.' + WB.board.id, []);
+WB.versions = () => LS.get('tessera.wb.v.' + WB.board.id, []);
 WB.snapshot = (label = 'Saved version', objs = WB.objs) => {
   let list = [{ t: Date.now(), by: WB.me.name, label, count: Object.keys(objs).length, objs }, ...WB.versions()].slice(0, 20);
   // keep as many versions as the browser has room for, newest first
-  while (list.length > 1 && !LS.set('lo.wb.v.' + WB.board.id, list, true)) list = list.slice(0, -1);
-  if (list.length === 1) LS.set('lo.wb.v.' + WB.board.id, list, true);
+  while (list.length > 1 && !LS.set('tessera.wb.v.' + WB.board.id, list, true)) list = list.slice(0, -1);
+  if (list.length === 1) LS.set('tessera.wb.v.' + WB.board.id, list, true);
   WB.lastSnap = Date.now(); WB.snapDue = false; WB.emit('versions');
 };
 WB.restoreVersion = i => {
@@ -331,7 +343,7 @@ setInterval(() => {
 }, 2000);
 addEventListener('pagehide', () => send({ t: 'bye' }));
 // another tab changed the board list
-addEventListener('storage', e => { if (e.key === 'lo.wb.index' || e.key === 'lo.wb.folders') WB.emit('index'); });
+addEventListener('storage', e => { if (e.key === 'tessera.wb.index' || e.key === 'tessera.wb.folders') WB.emit('index'); });
 
 /* Moving this to the real app (Tauri + React):
    - storage → the app's database: one row per board, objects as JSON (or a row per object for big boards)

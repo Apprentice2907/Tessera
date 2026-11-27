@@ -56,13 +56,14 @@ const sortTokens = text => text.toLowerCase().replace(/[^a-z0-9\s-]/g, ' ').spli
 // a word matches its plural and -ing/-ed forms; words of 6+ letters also match longer words ("intern" → "internship")
 const sortHit = (w, kw) => w === kw || w === kw + 's' || w === kw + 'es' || w === kw + 'ing' || w === kw + 'ed' || (kw.length >= 6 && w.startsWith(kw));
 
-// ---------- what you taught it (kept in this browser) ----------
-const SORT_KEY = 'liveos.bento.sort.learned';
-function sortLearned() { try { return JSON.parse(localStorage.getItem(SORT_KEY)) || []; } catch { return []; } }
+// ---------- what you taught it: [title, category] pairs, newest last (core/store.js saves them) ----------
+const SORT_LEARNED = [];
+const sortLearned = () => SORT_LEARNED;
 function sortTeach(title, cal) {
   const t = title.trim().toLowerCase(); if (!t) return;
-  const all = sortLearned().filter(([x]) => x !== t); all.push([t, cal]);
-  try { localStorage.setItem(SORT_KEY, JSON.stringify(all.slice(-300))); } catch { /* private window: forget on reload */ }
+  const i = SORT_LEARNED.findIndex(([x]) => x === t); if (i >= 0) SORT_LEARNED.splice(i, 1);
+  SORT_LEARNED.push([t, cal]);
+  if (SORT_LEARNED.length > 300) SORT_LEARNED.splice(0, SORT_LEARNED.length - 300);
 }
 
 const sortExamples = () => [...ROUTINES.map(r => [r.title, r.cal]), ...EVENTS.map(e => [e.short || e.title, e.cal]), ...ONEOFFS.map(o => [o.title, o.cal])];

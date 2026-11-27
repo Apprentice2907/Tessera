@@ -1,8 +1,10 @@
 // Tessera · Today: the day's routines, events and one-off tasks in one list. Drag a task to In progress or Done,
 // star it to keep it on top, right-click it to change its category. Finishing a task with a time fills its hours in Hours.
-// The New task tile also logs a project update ("KamiLabs · Chartwells: updated the link"), filed under its week in Review.
+// The New task tile also logs a project update ("Portfolio: new hero section"), filed under today in its project file in Review.
 'use strict';
+// S.day: which day the page shows, counted from today (0 = today, 1 = tomorrow …); dayShown() is its day number
 Object.assign(S, { day: 0, fresh: null, ntStar: false, ntMode: 'task' });
+const dayShown = () => T + S.day;
 
 const ST_NAME = { todo: 'To do', prog: 'In progress', done: 'Done' };
 const STAR = '<svg viewBox="0 0 16 16"><path d="M8 1.7l1.93 3.92 4.32.63-3.13 3.05.74 4.3L8 11.57l-3.86 2.03.74-4.3L1.75 6.25l4.32-.63z"/></svg>';
@@ -10,9 +12,10 @@ const taskSource = id => ROUTINES.find(r => r.id === id) || EVENTS.find(e => e.i
 const starBtn = (id, title, on) => `<button class="star${on ? ' on' : ''}" data-star="${id}" aria-pressed="${on}" aria-label="${on ? 'Unstar' : 'Star'} ${esc(title)}">${STAR}</button>`;
 
 function setStatus(id, st) {
-  if (statusOf(S.day, id) === st) return;
-  STATUS[S.day + '|' + id] = st;
-  const said = S.day === 0 ? STORE.syncHours(0) : [];
+  const D = dayShown();
+  if (statusOf(D, id) === st) return;
+  STATUS[D + '|' + id] = st;
+  const said = STORE.syncHours(D);
   render();
   $(`[data-drop="${st}"]`)?.classList.add('bump');
   toast(`Moved to ${ST_NAME[st]}${said.length ? `. Logged ${said.join(', ')} in Hours` : ''}`);
@@ -29,7 +32,7 @@ function closeMenu() { $('#tmenu')?.remove(); document.removeEventListener('poin
 FLOATS.push(closeMenu);
 function openMenu({ x, y, id }) {
   closeFloats();
-  const src = taskSource(id), st = statusOf(S.day, id), cur = src?.cal;
+  const src = taskSource(id), st = statusOf(dayShown(), id), cur = src?.cal;
   const m = document.createElement('div'); m.className = 'tmenu'; m.id = 'tmenu'; m.dataset.float = ''; m.setAttribute('role', 'menu');
   m.innerHTML = `<small>Category</small>${SORT_ORDER.map(c => `<button role="menuitem" data-cat="${c}" class="${cur === c ? 'on' : ''}" style="--c:${CALS[c].color}"><i></i>${SORT_NAMES[c]}</button>`).join('')}`
     + `<small>Move to</small>${['todo', 'prog', 'done'].map(s => `<button role="menuitem" data-st="${s}" class="${st === s ? 'on' : ''}">${ST_NAME[s]}</button>`).join('')}`
@@ -88,15 +91,15 @@ function dragTasks(root, onDrop) {
 }
 
 P.today = () => {
-  const day = S.day, d = addDays(TODAY, day), tasks = tasksForDay(day);
+  const day = dayShown(), d = dateOf(day), tasks = tasksForDay(day);
   const st = t => statusOf(day, t.id), starred = t => !!STARS[day + '|' + t.id];
   const order = (a, b) => (starred(b) - starred(a)) || (startOf(a) - startOf(b)); // starred first, then by time
   const todo = tasks.filter(t => st(t) === 'todo').sort(order);
   const doneL = tasks.filter(t => st(t) === 'done').sort(order);
   const prog = tasks.filter(t => st(t) === 'prog').sort((a, b) => starred(b) - starred(a));
-  const tmr = eventsOn(day + 1).slice(0, 4), td = addDays(TODAY, day + 1);
-  const evs = eventsOn(day).filter(e => day > 0 || e.s > NOW_H), next = evs[0];
-  const label = day === 0 ? 'Today' : day === 1 ? 'Tomorrow' : DAY_LONG[d.getDay()];
+  const tmr = tasksForDay(day + 1).sort((a, b) => startOf(a) - startOf(b)).slice(0, 4), td = dateOf(day + 1);
+  const evs = eventsOn(day).filter(e => S.day > 0 || e.s > NOW_H), next = evs[0];
+  const label = S.day === 0 ? 'Today' : S.day === 1 ? 'Tomorrow' : DAY_LONG[d.getDay()];
   const updating = S.ntMode === 'update';
   const row = t => `<div class="row ${st(t)}${t.id === S.fresh ? ' fresh' : ''}" data-drag="${t.id}" style="--c:${CALS[t.cal].color}"><button class="chk" data-tick="${t.id}" aria-label="Tick ${esc(t.title)}">${CHECK}</button><span class="t">${esc(t.title)}</span>${starBtn(t.id, t.title, starred(t))}${t.time ? `<time>${t.time}</time>` : ''}</div>`;
   const progCard = t => `<div class="pcard prog${t.id === S.fresh ? ' fresh' : ''}" data-drag="${t.id}"><div class="tt" style="--c:${CALS[t.cal].color}"><button class="chk" data-tick="${t.id}" aria-label="Tick ${esc(t.title)}">${CHECK}</button><span>${esc(t.title)}</span>${starBtn(t.id, t.title, starred(t))}${t.time ? `<time>${t.time}</time>` : ''}</div><input data-note="${t.id}" value="${esc(PNOTES[day + '|' + t.id] || '')}" placeholder="Where did you stop?" aria-label="Note for ${esc(t.title)}"></div>`;
@@ -104,8 +107,8 @@ P.today = () => {
     <section class="tile g-bands lead drop" style="grid-area:list" data-drop="todo" data-drop-label="Back to the list">
       <div class="copy"><b>${label}.</b> <span>Drag a task to start or finish it.</span></div>
       <div class="card">
-        <div class="card-head"><strong>${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}</strong><small class="left">${todo.length ? `${todo.length} to do` : 'all done'}</small>${day === 0 ? '<a class="wlink" href="widget.html" target="_blank" rel="noopener" title="Today’s list as a small widget: keep it open, add it to your home screen, or embed it">Widget</a>' : ''}</div>
-        <div class="rows" data-keep="rows${day}">${todo.map(row).join('') || '<div class="empty">All clear. Add a task or drag one back.</div>'}${doneL.length ? `<div class="sub">Done · ${doneL.length}</div>${doneL.map(row).join('')}` : ''}</div>
+        <div class="card-head"><strong>${DAY_NAMES[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}</strong><small class="left">${todo.length ? `${todo.length} to do` : 'all done'}</small>${S.day === 0 ? '<a class="wlink" href="widget.html" target="_blank" rel="noopener" title="Today’s list as a small widget: keep it open, add it to your home screen, or embed it">Widget</a>' : ''}</div>
+        <div class="rows" data-keep="rows${day}">${todo.map(row).join('') || `<div class="empty">${tasks.length ? 'All clear. Add a task or drag one back.' : 'Nothing planned. Add a task below, or plan your week in the Calendar.'}</div>`}${doneL.length ? `<div class="sub">Done · ${doneL.length}</div>${doneL.map(row).join('')}` : ''}</div>
       </div>
     </section>
     <section class="tile g-lilac tall drop" style="grid-area:prog" data-drop="prog" data-drop-label="Start it">
@@ -122,18 +125,18 @@ P.today = () => {
     </section>
     <section class="tile g-paper wide" style="grid-area:week">
       <div class="copy"><b>This week.</b> <span>Pick a day to plan it.</span></div>
-      <div class="wk7">${Array.from({ length: 7 }, (_, i) => { const w = addDays(TODAY, i); return `<button class="${i === day ? 'on' : ''}" data-day="${i}" aria-pressed="${i === day}">${DAY_NAMES[w.getDay()]}<b>${w.getDate()}</b><em>${tasksForDay(i).length}</em></button>`; }).join('')}</div>
+      <div class="wk7">${Array.from({ length: 7 }, (_, i) => { const w = dateOf(T + i), n = tasksForDay(T + i).length; return `<button class="${i === S.day ? 'on' : ''}" data-day="${i}" aria-pressed="${i === S.day}">${DAY_NAMES[w.getDay()]}<b>${w.getDate()}</b>${n ? `<em>${n}</em>` : ''}</button>`; }).join('')}</div>
     </section>
     <section class="tile g-night" style="grid-area:rout">
-      <div class="copy"><b>${DAY_LONG[td.getDay()]}.</b> <span>Coming up next.</span></div>
-      <div class="rlist">${tmr.map(e => `<div class="rl" style="--c:${CALS[e.cal].color}"><i></i><span>${esc(e.short || e.title)}</span><small>${fmtTime(e.s)}</small></div>`).join('')}</div>
+      <div class="copy"><b>${DAY_LONG[td.getDay()]}.</b> <span>${tmr.length ? 'Coming up next.' : 'Nothing planned yet.'}</span></div>
+      <div class="rlist">${tmr.map(t => `<div class="rl" style="--c:${CALS[t.cal].color}"><i></i><span>${esc(t.title)}</span>${t.time ? `<small>${t.time}</small>` : ''}</div>`).join('')}</div>
     </section>
     <section class="tile g-yellow nt-tile${updating ? ' updating' : ''}" style="grid-area:new">
       <div class="ntmode" role="tablist" aria-label="Add"><button type="button" role="tab" data-mode="task" aria-selected="${!updating}" class="${updating ? '' : 'on'}">Task</button><button type="button" role="tab" data-mode="update" aria-selected="${updating}" class="${updating ? 'on' : ''}" title="Project update (U)">Update</button></div>
-      ${updating ? `<div class="copy"><b>Project update.</b> <span>Filed under its week in Review.</span></div>
+      ${updating ? `<div class="copy"><b>Project update.</b> <span>Filed in its project in Review.</span></div>
       <form class="addf" id="add-update" autocomplete="off">
-        <div class="upchips">${STORE.recentBooks(3).map(b => `<button type="button" data-proj="${esc(b.name)}">${esc(b.name)}</button>`).join('')}</div>
-        <input id="nt" placeholder="KamiLabs · Chartwells: updated the link" aria-label="Project and what happened, like Lyra: fixed the queue">
+        <div class="upchips">${STORE.recentProjects(3).map(p => `<button type="button" data-proj="${esc(p.name)}">${esc(p.name)}</button>`).join('')}</div>
+        <input id="nt" placeholder="Project: what happened, e.g. Portfolio: new hero" aria-label="Project and what happened, like Portfolio: new hero">
         <button class="add" type="submit">Log update</button>
       </form>` : `<div class="copy"><b>New task.</b> <span>For ${label.toLowerCase()}.</span></div>
       <form class="addf" id="add-task" autocomplete="off">
@@ -146,14 +149,14 @@ P.today = () => {
 
 P.today.bind = root => {
   $$('[data-tick]', root).forEach(b => b.onclick = () => {
-    const k = S.day + '|' + b.dataset.tick; STATUS[k] = STATUS[k] === 'done' ? 'todo' : 'done';
-    const said = S.day === 0 ? STORE.syncHours(0) : [];
+    const k = dayShown() + '|' + b.dataset.tick; STATUS[k] = STATUS[k] === 'done' ? 'todo' : 'done';
+    const said = STORE.syncHours(dayShown());
     render();
     if (said.length) toast(`Logged ${said.join(', ')} in Hours`);
   });
-  $$('[data-star]', root).forEach(b => b.onclick = () => { const k = S.day + '|' + b.dataset.star; STARS[k] = !STARS[k]; S.fresh = STARS[k] ? b.dataset.star : null; render(); });
+  $$('[data-star]', root).forEach(b => b.onclick = () => { const k = dayShown() + '|' + b.dataset.star; STARS[k] = !STARS[k]; S.fresh = STARS[k] ? b.dataset.star : null; render(); });
   $$('[data-day]', root).forEach(b => b.onclick = () => { S.day = +b.dataset.day; render(); });
-  $$('[data-note]', root).forEach(i => i.onchange = () => { PNOTES[S.day + '|' + i.dataset.note] = i.value.trim(); });
+  $$('[data-note]', root).forEach(i => i.onchange = () => { PNOTES[dayShown() + '|' + i.dataset.note] = i.value.trim(); });
   $$('[data-drag]', root).forEach(el => el.oncontextmenu = e => { e.preventDefault(); openMenu({ x: e.clientX, y: e.clientY, id: el.dataset.drag }); });
   dragTasks(root, setStatus);
 
@@ -183,7 +186,7 @@ function bindUpdate(root) {
     const r = STORE.logUpdate(raw);
     if (!r.ok) { toast(r.msg); return inp.focus(); }
     render(); $('#nt')?.focus();
-    toast(r.made ? `New file for ${r.name} in ${r.folder}, update filed` : `Filed under ${r.name}, this week`);
+    toast(r.made ? `New project file for ${r.name} in ${r.folder}, update filed` : `Filed under ${r.name}, today`);
   };
 }
 // a new task: a time typed into the text ("at 6pm", "18:30") is picked up and shown in the field
@@ -199,10 +202,10 @@ function bindNewTask(root) {
     e.preventDefault();
     const raw = nt.value.trim(); if (!raw) return nt.focus();
     const tm = sortTime(raw), title = tm ? tm.title : raw;
-    const o = { id: 'o' + Date.now(), day: S.day, cal: sortTask(title).cal, title };
+    const o = { id: 'o' + Date.now(), day: dayShown(), cal: sortTask(title).cal, title };
     if (tm) { o.s = tm.s; o.time = fmtTime(tm.s); }
     ONEOFFS.push(o);
-    if (S.ntStar) STARS[S.day + '|' + o.id] = true;
+    if (S.ntStar) STARS[dayShown() + '|' + o.id] = true;
     const msg = (S.ntStar ? 'Starred and added' : 'Added') + (o.time ? ` for ${o.time}` : '');
     S.ntStar = false; S.fresh = o.id;
     render(); toast(msg);
@@ -215,3 +218,4 @@ SHORTCUTS.u = () => {
   if (current() !== 'today') location.hash = 'today'; else render();
   setTimeout(() => $('#nt')?.focus(), 80);
 };
+P.today.live = true;

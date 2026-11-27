@@ -1,52 +1,46 @@
-// Tessera · Calendar: a week at a time, the month beside it, routines as dots, and the coding contests imported for you.
-// Double-click a day to add, an event to edit. A card opens beside what you clicked; Esc or a click outside closes it.
+// Tessera · Calendar: a week at a time, the month beside it, routines as dots, and upcoming coding contests
+// from Codeforces, CodeChef and LeetCode. Double-click a day to add, an event to edit.
 'use strict';
+// S.wk: the week shown, counted from this week; S.mmOff: the small month shown, counted from this month
 Object.assign(S, { wk: 0, mmOff: 0, calFresh: null });
 
 const SVG = d => `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
-const IC = { l: SVG('M10 3.5 5.5 8l4.5 4.5'), r: SVG('M6 3.5 10.5 8 6 12.5'), plus: SVG('M8 3v10M3 8h10'), x: SVG('M4.5 4.5l7 7M11.5 4.5l-7 7') };
+const IC = { l: SVG('M10 3.5 5.5 8l4.5 4.5'), r: SVG('M6 3.5 10.5 8 6 12.5'), plus: SVG('M8 3v10M3 8h10') };
 const toHHMM = t => String(Math.floor(t)).padStart(2, '0') + ':' + String(Math.round((t % 1) * 60)).padStart(2, '0');
 const fromHHMM = v => { const [h, m] = v.split(':').map(Number); return h + (m || 0) / 60; };
-const dayLabel = D => { const d = addDays(TODAY, D); return `${DAY_NAMES[d.getDay()]} ${d.getDate()}`; };
+const dayLabel = D => { const d = dateOf(D); return `${DAY_NAMES[d.getDay()]} ${d.getDate()}`; };
 const drop = (arr, x) => { const i = arr.indexOf(x); if (i >= 0) arr.splice(i, 1); };
-const noBrackets = title => title.replace(/\s*\(.*\)/, '');
+const shownWeek = () => weekStart(T) + S.wk * 7;
 
 function goWeek(wk) {
   S.wk = wk;
-  const ws = addDays(TODAY, wk * 7);
+  const ws = dateOf(shownWeek());
   S.mmOff = (ws.getFullYear() - TODAY.getFullYear()) * 12 + ws.getMonth() - TODAY.getMonth();
   render();
 }
 
-// ---------- the card: opens next to what you clicked ----------
-function closePop() {
-  $('#pop')?.remove();
-  document.removeEventListener('pointerdown', closePop.out, true);
-  document.removeEventListener('keydown', closePop.key, true);
+// ---------- upcoming contests: serve.py fetches them from the sites and keeps them for half an hour ----------
+// null while loading; 'off' when there's no server to ask (a static host)
+let CONTESTS = null;
+async function loadContests() {
+  try {
+    const r = await fetch('api/contests', { cache: 'no-store' }); if (!r.ok) throw new Error(r.status);
+    CONTESTS = (await r.json()).contests.map((c, i) => { const d = new Date(c.start); return { ...c, id: 'c' + i, D: dayIdx(d), s: d.getHours() + d.getMinutes() / 60 }; });
+  } catch { CONTESTS = 'off'; }
+  if (shownPage === 'calendar' && !busy()) render();
 }
-FLOATS.push(closePop);
-function openPop(anchor, html, bind, below = false) {
-  closeFloats();
-  const p = document.createElement('div'); p.className = 'pop'; p.id = 'pop'; p.dataset.float = ''; p.setAttribute('role', 'dialog');
-  p.innerHTML = html; document.body.appendChild(p);
-  const place = () => {
-    const r = anchor.getBoundingClientRect(), w = p.offsetWidth, h = p.offsetHeight, gap = 10;
-    let x = r.right + gap, y = r.top;
-    if (x + w > innerWidth - 12) x = r.left - gap - w;
-    if (below) { x = Math.max(12, Math.min(innerWidth - w - 12, r.right - w)); y = r.bottom + gap; }
-    else if (x < 12) { x = Math.max(12, Math.min(innerWidth - w - 12, r.left)); y = r.bottom + gap; }
-    p.style.left = x + 'px'; p.style.top = Math.max(12, Math.min(innerHeight - h - 12, y)) + 'px';
-  };
-  place(); p.place = place;
-  closePop.out = e => { if (!p.contains(e.target)) closePop(); };
-  closePop.key = e => { if (e.key === 'Escape') { e.stopPropagation(); closePop(); } };
-  setTimeout(() => document.addEventListener('pointerdown', closePop.out, true));
-  document.addEventListener('keydown', closePop.key, true);
-  $$('[data-x]', p).forEach(b => b.onclick = closePop);
-  bind(p);
-  return p;
+const contestsOn = D => (Array.isArray(CONTESTS) ? CONTESTS.filter(c => c.D === D) : []);
+const comingContests = () => (Array.isArray(CONTESTS) ? CONTESTS.filter(c => c.start > Date.now()) : []);
+function contestPop(anchor, c) {
+  const pf = PLATFORMS[c.plat], d = dateOf(c.D), mins = Math.round((c.end - c.start) / 60000);
+  openPop(anchor, `${popTop('Contest')}
+    <div class="ptitle as-text">${esc(c.title)}</div>
+    <div class="prow">${DAY_LONG[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} · ${fmtTime(c.s)} · ${mins >= 60 ? `${Math.floor(mins / 60)} h${mins % 60 ? ` ${mins % 60} min` : ''}` : `${mins} min`}</div>
+    <div class="psrc"><span class="plat" style="background:${pf.bg};color:${pf.fg}">${c.plat}</span><span>From ${pf.name}. The time follows the site if the contest moves.</span></div>
+    <div class="pfoot"><button type="button" class="pbtn" data-x>Close</button><a class="pbtn dark" href="${esc(c.url)}" target="_blank" rel="noopener">Open on ${pf.name}</a></div>`, () => {});
 }
-const popTop = label => `<div class="ptop"><span>${label}</span><button type="button" class="px" data-x aria-label="Close">${IC.x}</button></div>`;
+
+// ---------- the cards: add, edit, delete ----------
 const catChips = cal => `<div class="pcats" role="radiogroup" aria-label="Category">${Object.entries(CALS).map(([k, c]) => `<button type="button" data-cat="${k}" class="${k === cal ? 'on' : ''}" style="--cs:${c.color}" role="radio" aria-checked="${k === cal}">${c.name}<i class="tick">${TICK}</i></button>`).join('')}</div>`;
 function bindCats(p, set) {
   $$('[data-cat]', p).forEach(b => b.onclick = () => {
@@ -71,7 +65,7 @@ const calDone = msg => { closePop(); render(); toast(msg); };
 
 // + or a double-click on a day: title, day, optional time, optional weekly repeat. The colour is picked for you.
 function addPop(anchor, D, below = false) {
-  const D0 = S.wk * 7, pick = new Set([D]);
+  const D0 = shownWeek(), pick = new Set([D]);
   let timed = false, rep = false, s = 18, en = 19;
   openPop(anchor, `${popTop('New event')}
     <input class="ptitle" id="pe-t" placeholder="e.g. Mock interview at 6pm" aria-label="Title" autocomplete="off">
@@ -104,7 +98,7 @@ function addPop(anchor, D, below = false) {
     const add = () => {
       const raw = title.value.trim(); if (!raw) return title.focus();
       const tm = sortTime(raw), name = tm ? tm.title : raw, cal = sortTask(name).cal;
-      const sel = [...pick].sort((a, b) => a - b), dows = sel.map(x => addDays(TODAY, x).getDay());
+      const sel = [...pick].sort((a, b) => a - b), dows = sel.map(x => dateOf(x).getDay());
       const ids = []; let msg;
       if (timed) {
         if (en <= s) en = Math.min(24, s + 1);
@@ -112,7 +106,7 @@ function addPop(anchor, D, below = false) {
         msg = `Added at ${fmtTime(s)}${rep ? ', every week' : ''}`;
       } else if (rep) {
         const id = 'r' + Date.now(); ids.push(id);
-        ROUTINES.push({ id, cal, title: name, months: { [monthKey(addDays(TODAY, sel[0]))]: dows } });
+        ROUTINES.push({ id, cal, title: name, months: { [monthKey(dateOf(sel[0]))]: dows } });
         msg = 'Repeats with no time, so it shows as a dot';
       } else {
         const id = 'o' + Date.now(); ids.push(id);
@@ -132,9 +126,9 @@ function addPop(anchor, D, below = false) {
 function editPop(anchor, id, D) {
   const e = EVENTS.find(x => x.id === id), o = !e && ONEOFFS.find(x => x.id === id);
   const item = e || o; if (!item) return;
-  const d = addDays(TODAY, D), pl = e && e.plat && PLATFORMS[e.plat];
+  const d = dateOf(D);
   let cal = item.cal, t = o ? (o.s ?? null) : null;
-  const kind = e ? (e.contest ? 'Contest' : e.rep ? `Repeats · ${e.rep.replace(/^Weekly · /, 'every ')}` : 'Event') : 'Task';
+  const kind = e ? (e.rep ? `Repeats · ${e.rep.replace(/^Weekly · /, 'every ')}` : 'Event') : 'Task';
   const timesHTML = () => e
     ? `<input type="time" id="pe-s" value="${toHHMM(e.s)}" aria-label="Starts"><em>to</em><input type="time" id="pe-e" value="${toHHMM(e.e)}" aria-label="Ends">`
     : t != null ? `<input type="time" id="pe-s" value="${toHHMM(t)}" aria-label="Time"><button type="button" class="plink" data-notime>No time</button>`
@@ -143,7 +137,6 @@ function editPop(anchor, id, D) {
     <input class="ptitle" id="pe-t" value="${esc(item.title)}" aria-label="Title" autocomplete="off">
     <div class="prow">${DAY_LONG[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}</div>
     <div class="ptimes">${timesHTML()}</div>
-    ${pl ? `<div class="psrc"><span class="plat" style="background:${pl.bg};color:${pl.fg}">${e.plat}</span><span>From ${pl.name}. The time updates if the contest moves.</span></div>` : ''}
     ${catChips(cal)}
     <div class="pfoot"></div>`, p => {
     const bindTimes = () => {
@@ -181,7 +174,7 @@ function editPop(anchor, id, D) {
 // a routine dot (double-click) or a routine in the list: its days, title and colour
 function routinePop(anchor, id, D) {
   const r = ROUTINES.find(x => x.id === id); if (!r) return;
-  const mk = monthKey(addDays(TODAY, D ?? S.wk * 7));
+  const mk = monthKey(dateOf(D ?? Math.max(T, shownWeek())));
   let days = [...routineDaysForKey(r, mk)], cal = r.cal;
   openPop(anchor, `${popTop('Routine · no time, so a dot')}
     <input class="ptitle" id="pe-t" value="${esc(r.title)}" aria-label="Title" autocomplete="off">
@@ -211,10 +204,11 @@ function routinePop(anchor, id, D) {
 }
 
 P.calendar = () => {
-  const D0 = S.wk * 7, ws = addDays(TODAY, D0), we = addDays(ws, 6);
+  if (CONTESTS === null && !loadContests.started) { loadContests.started = true; loadContests(); setInterval(loadContests, 30 * 60000); }
+  const D0 = shownWeek(), ws = dateOf(D0), we = dateOf(D0 + 6);
   const days = Array.from({ length: 7 }, (_, i) => D0 + i);
-  const contests = EVENTS.filter(e => e.contest && e.day * 24 + e.s > NOW_H).sort((a, b) => a.day - b.day || a.s - b.s);
-  const nx = contests[0], h = nx ? nx.day * 24 + nx.s - NOW_H : 0, nd = nx && addDays(TODAY, nx.day), np = nx && PLATFORMS[nx.plat];
+  const coming = comingContests(), nx = coming[0], np = nx && PLATFORMS[nx.plat], nd = nx && dateOf(nx.D);
+  const h = nx ? (nx.start - Date.now()) / 3.6e6 : 0;
   const timedOn = D => [
     ...eventsOn(D).map(e => ({ kind: 'event', id: e.id, s: e.s, cal: e.cal, label: e.short || e.title })),
     ...ONEOFFS.filter(o => o.day === D && o.s != null).map(o => ({ kind: 'task', id: o.id, s: o.s, cal: o.cal, label: o.title })),
@@ -222,13 +216,15 @@ P.calendar = () => {
   const count = days.reduce((a, D) => a + timedOn(D).length, 0);
   const fresh = id => (S.calFresh && S.calFresh.has(id) ? ' fresh' : '');
   const evBtn = (kind, id, D, cal, time, label) => `<button class="ev${kind === 'task' ? ' task' : ''}${statusOf(D, id) === 'done' ? ' done' : ''}${fresh(id)}" data-ev="${id}" data-d="${D}" style="--ec:${CALS[cal].color}" title="Double-click to edit">${time ? `<small>${time}</small>` : ''}<b>${esc(label)}</b></button>`;
+  const contestBtn = c => `<button class="ev contest" data-contest="${c.id}" style="--ec:${PLATFORMS[c.plat].bg};--ef:${PLATFORMS[c.plat].fg}" title="${esc(c.title)}"><small>${fmtTime(c.s)} · ${c.plat}</small><b>${esc(c.title)}</b></button>`;
   const col = D => {
-    const d = addDays(TODAY, D);
-    return `<div class="wcol ${D === 0 ? 'today' : ''}" data-col="${D}">
+    const d = dateOf(D);
+    return `<div class="wcol ${D === T ? 'today' : ''}${D < T ? ' past' : ''}" data-col="${D}">
       <div class="dh">${DAY_NAMES[d.getDay()]}<b>${d.getDate()}</b></div>
       <div class="dots">${ROUTINES.filter(r => routineOn(r, d)).map(r => `<button class="${statusOf(D, r.id) === 'done' ? 'on' : ''}${fresh(r.id)}" data-rt="${r.id}" data-d="${D}" style="--c:${CALS[r.cal].color}" title="${esc(r.title)} · double-click to edit" aria-label="${esc(r.title)}"></button>`).join('')}</div>
       ${ONEOFFS.filter(o => o.day === D && o.s == null).map(o => evBtn('task', o.id, D, o.cal, '', o.title)).join('')}
       ${timedOn(D).map(x => evBtn(x.kind, x.id, D, x.cal, fmtTime(x.s), x.label)).join('')}
+      ${contestsOn(D).map(contestBtn).join('')}
       <button class="wadd" data-add="${D}" aria-label="Add on ${dayLabel(D)}">${IC.plus}</button>
     </div>`;
   };
@@ -242,6 +238,7 @@ P.calendar = () => {
     mm += `<button class="${cls}" data-goto="${dayIdx(d)}" aria-label="Week of ${d.getDate()} ${MONTHS[d.getMonth()]}">${+d === +TODAY ? `<i>${d.getDate()}</i>` : d.getDate()}</button>`;
   }
   const title = ws.getMonth() === we.getMonth() ? `${MONTHS[ws.getMonth()]} ${ws.getDate()} – ${we.getDate()}.` : `${MON3[ws.getMonth()]} ${ws.getDate()} – ${MON3[we.getMonth()]} ${we.getDate()}.`;
+  const noContests = CONTESTS === null ? 'Looking for contests…' : CONTESTS === 'off' ? 'Contests show up when Tessera runs from serve.py.' : 'None announced yet.';
   S.calFresh = null;
   return `<main class="bento p-cal">
     <section class="tile g-sea lead" style="grid-area:week">
@@ -252,8 +249,8 @@ P.calendar = () => {
     <section class="tile g-night tall" style="grid-area:cont">
       ${nx ? `<div class="copy cont-head"><span class="plat" style="background:${np.bg};color:${np.fg}">${nx.plat}</span><b>Next contest.</b></div>
       <div class="cd"><div class="big">${Math.floor(h / 24)}<small>d</small>${Math.floor(h % 24)}<small>h</small></div>
-        <p>${esc(noBrackets(nx.title))}<br>${DAY_LONG[nd.getDay()]} ${nd.getDate()} · ${fmtTime(nx.s)}</p>
-        <button data-reg>Register</button></div>` : '<div class="copy"><b>No contests coming up.</b></div>'}
+        <p>${esc(nx.title)}<br>${DAY_LONG[nd.getDay()]} ${nd.getDate()} ${MON3[nd.getMonth()]} · ${fmtTime(nx.s)}</p>
+        <a class="cd-go" href="${esc(nx.url)}" target="_blank" rel="noopener">Register</a></div>` : `<div class="copy"><b>Next contest.</b> <span>${noContests}</span></div>`}
     </section>
     <section class="tile g-paper" style="grid-area:mini">
       <div class="copy"><b>${MONTHS[first.getMonth()]}${first.getFullYear() !== TODAY.getFullYear() ? ' ' + first.getFullYear() : ''}.</b></div>
@@ -261,7 +258,7 @@ P.calendar = () => {
       <div class="mm">${mm}</div>
     </section>
     <section class="tile g-cream" style="grid-area:rout">
-      <div class="copy"><b>Routines.</b> <span>No time, so dots.</span></div>
+      <div class="copy"><b>Routines.</b> <span>${ROUTINES.length ? 'No time, so dots.' : 'Add one with “Repeat every week” and no time.'}</span></div>
       <div class="rmini">${ROUTINES.map(r => `<button data-rt="${r.id}" style="--cs:${CALS[r.cal].color}" title="Edit ${esc(r.title)}"><b>${esc(r.title)}</b><small>${daySummary(routineDaysForKey(r, monthKey(ws))).replace('Every day', 'Daily')}</small></button>`).join('')}</div>
     </section>
     <section class="tile g-green" style="grid-area:evs">
@@ -269,27 +266,30 @@ P.calendar = () => {
       <div class="stat">${count}</div>
     </section>
     <section class="tile g-orange" style="grid-area:upc">
-      <div class="copy"><b>Contests.</b> <span>Imported for you.</span></div>
-      <div class="ulist">${contests.slice(1, 4).map(e => { const pf = PLATFORMS[e.plat], d = addDays(TODAY, e.day); return `<button data-contest="${e.id}"><span class="plat" style="background:${pf.bg};color:${pf.fg}">${e.plat}</span><span>${esc(noBrackets(e.title))}</span><small>${DAY_NAMES[d.getDay()]} ${d.getDate()}</small></button>`; }).join('')}</div>
+      <div class="copy"><b>Contests.</b> <span>${coming.length > 1 ? 'Codeforces, CodeChef, LeetCode.' : noContests}</span></div>
+      <div class="ulist">${coming.slice(1, 4).map(c => { const pf = PLATFORMS[c.plat], d = dateOf(c.D); return `<button data-goc="${c.id}"><span class="plat" style="background:${pf.bg};color:${pf.fg}">${c.plat}</span><span>${esc(c.title)}</span><small>${DAY_NAMES[d.getDay()]} ${d.getDate()}</small></button>`; }).join('')}</div>
     </section>
   </main>`;
 };
 
 P.calendar.bind = root => {
-  $('[data-reg]', root)?.addEventListener('click', () => toast('Opens the contest page to register'));
   $$('[data-wk]', root).forEach(b => b.onclick = () => goWeek(+b.dataset.wk));
   $$('[data-mm]', root).forEach(b => b.onclick = () => { S.mmOff += +b.dataset.mm; render(); });
-  $$('[data-goto]', root).forEach(b => b.onclick = () => goWeek(Math.floor(+b.dataset.goto / 7)));
-  $('#cal-add', root).onclick = ev => addPop(ev.currentTarget, S.wk === 0 ? 0 : S.wk * 7, true);
+  $$('[data-goto]', root).forEach(b => b.onclick = () => goWeek(Math.floor((+b.dataset.goto - weekStart(T)) / 7)));
+  $('#cal-add', root).onclick = ev => addPop(ev.currentTarget, S.wk === 0 ? T : shownWeek(), true);
   $$('[data-add]', root).forEach(b => b.onclick = () => addPop(b.closest('.wcol'), +b.dataset.add));
   // on the week itself only a double-click opens a card, so a stray click never does anything
   $$('.wcol', root).forEach(c => c.ondblclick = ev => { if (ev.target === c) addPop(c, +c.dataset.col); });
   $$('[data-ev]', root).forEach(b => b.ondblclick = () => editPop(b, b.dataset.ev, +b.dataset.d));
   $$('.dots [data-rt]', root).forEach(b => b.ondblclick = () => routinePop(b, b.dataset.rt, +b.dataset.d));
   $$('.rmini [data-rt]', root).forEach(b => b.onclick = () => routinePop(b, b.dataset.rt, null));
-  $$('[data-contest]', root).forEach(b => b.onclick = () => {
-    const e = EVENTS.find(x => x.id === b.dataset.contest); if (!e) return;
-    goWeek(Math.floor(e.day / 7));
-    const el = $(`[data-ev="${e.id}"][data-d="${e.day}"]`); if (el) editPop(el, e.id, e.day);
+  const contest = id => Array.isArray(CONTESTS) && CONTESTS.find(c => c.id === id);
+  $$('[data-contest]', root).forEach(b => b.onclick = () => contestPop(b, contest(b.dataset.contest)));
+  // a contest in the list: go to its week and open it there
+  $$('[data-goc]', root).forEach(b => b.onclick = () => {
+    const c = contest(b.dataset.goc); if (!c) return;
+    goWeek(Math.floor((c.D - weekStart(T)) / 7));
+    const el = $(`[data-contest="${c.id}"]`); if (el) contestPop(el, c);
   });
 };
+P.calendar.live = true;
