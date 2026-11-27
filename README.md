@@ -67,6 +67,12 @@ cd web && npm run dev
 
 Without the server (any static host) the app still works and saves to the browser only.
 
+## Online
+
+`web/` also deploys to Vercel as it is (`web/vercel.json`): the built app, plus one function, `web/api/contests.js`,
+that fetches the contests the way `serve.py` does. There's no `serve.py` online, so that copy saves to each browser only
+and doesn't share data with the copy on your computer.
+
 ## Contests
 
 With the server running, upcoming contests from Codeforces, CodeChef and LeetCode are fetched from the sites every half
