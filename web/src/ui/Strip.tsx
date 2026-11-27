@@ -1,5 +1,6 @@
-// Tessera · an hour strip: a day's 24 hours as blocks, a run of the same category one block with its name (Home and Hours),
-// and the hours under it. When the strip first shows, its blocks fill in from the left (a GSAP timeline).
+// Tessera · an hour strip: a day's 24 hours as blocks, a run of the same category one block (Home and Hours), and the
+// hours under it. A block shows its category's name only when the whole name fits; a narrower one is just its colour,
+// with the name on hover. When the strip first shows, its blocks fill in from the left (a GSAP timeline).
 import { useLayoutEffect, useRef, type MouseEvent } from 'react';
 import { gsap } from 'gsap';
 import type { Cat, HourCells } from '../lib/types';
@@ -9,6 +10,18 @@ export function Strip({ cells, cats, id, onPick }: { cells: HourCells; cats: Cat
   const ref = useRef<HTMLDivElement>(null);
   const runs: { id: string | null; n: number; i: number }[] = [];
   for (let i = 0; i < 24;) { const c = cells[i]; let n = 1; while (c && cells[i + n] === c) n++; runs.push({ id: c, n, i }); i += n; }
+  // a name that doesn't fit its block isn't shown cut off: it steps aside (checked again whenever the strip changes size)
+  useLayoutEffect(() => {
+    const strip = ref.current; if (!strip) return;
+    const fit = () => strip.querySelectorAll<HTMLElement>('.hb-n').forEach(n => {
+      const b = n.parentElement!, room = b.clientWidth - parseFloat(getComputedStyle(b).paddingLeft) - 6;
+      n.classList.toggle('cut', n.scrollWidth > room);
+    });
+    fit();
+    const ro = new ResizeObserver(fit); ro.observe(strip);
+    document.fonts?.ready.then(fit);
+    return () => ro.disconnect();
+  });
   // only when it first shows: an hour painted later just appears
   useLayoutEffect(() => {
     if (!ref.current || reducedMotion()) return;
@@ -27,7 +40,7 @@ export function Strip({ cells, cats, id, onPick }: { cells: HourCells; cats: Cat
       {runs.map(({ id: c, n, i }) => {
         const k = c ? cats.find(x => x.id === c) : undefined;
         return k
-          ? <div key={i} className="hb f" style={{ gridColumn: `span ${n}`, ['--cs' as string]: k.solid, ['--cf' as string]: k.fg || '#fff' }}>{n >= 2 ? k.name : ''}</div>
+          ? <div key={i} className="hb f" title={k.name} style={{ gridColumn: `span ${n}`, ['--cs' as string]: k.solid, ['--cf' as string]: k.fg || '#fff' }}>{n >= 2 && <span className="hb-n">{k.name}</span>}</div>
           : <div key={i} className="hb" style={{ gridColumn: `span ${n}` }} />;
       })}
     </div>

@@ -79,6 +79,9 @@ a.tile:hover { transform: translateY(-3px); }
 .strip { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; }
 .hb { height: 46px; border-radius: 9px; background: #E9E9EC; display: flex; align-items: center; padding-left: 9px; font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow: hidden; }
 .hb.f { background: var(--cs); color: var(--cf); }
+/* a block shows its category's name only when the whole name fits (ui/Strip.tsx measures it) */
+.hb-n { flex: none; }
+.hb-n.cut { visibility: hidden; }
 .ticks { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 3px; font-size: 12px; white-space: nowrap; margin-top: 7px; }
 /* every hour gets a number: 1–11 light so they blend in, 12 AM and 12 PM dark and bold */
 .ticks span { color: #CACACF; }
