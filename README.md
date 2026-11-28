@@ -11,6 +11,8 @@ date and turns to the new day at midnight.
 It's a desktop app you install, like Microsoft To Do: a window for the app, and a small to-do card on your desktop that
 sits behind your other windows. Your data stays on your computer.
 
+**[Download it for Windows](https://github.com/Apprentice2907/Tessera/releases/latest)**
+
 ## Stack
 
 - **Tauri 2** makes it a desktop app (`web/src-tauri/`, Rust): a small installer that uses the Edge engine already in
@@ -29,7 +31,8 @@ sits behind your other windows. Your data stays on your computer.
 
 ## Install it
 
-Run the installer, `Tessera_<version>_x64-setup.exe`. It installs for you alone (no admin rights) and adds Tessera to the
+Download the installer, `Tessera_<version>_x64-setup.exe`, from
+[the latest release](https://github.com/Apprentice2907/Tessera/releases/latest) and run it. It installs for you alone (no admin rights) and adds Tessera to the
 Start menu. The first time it opens, it turns on the desktop widget and starts with Windows; both can be turned off
 from its tray icon, which also opens the app and quits it. Keys `1`–`7` switch pages; `U` logs a project update from
 anywhere.
