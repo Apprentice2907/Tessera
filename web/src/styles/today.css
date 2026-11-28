@@ -97,7 +97,7 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; }
 .addf .add { height: 40px; border-radius: 12px; background: var(--ink); color: #fff; font-size: 14.5px; font-weight: 700; }
 .addf .nt { position: relative; }
 .addf .nt input { width: 100%; padding-right: 48px; }
-.addf .nt.has-time input { padding-right: 112px; }
+.addf .nt.has-time input { padding-right: 150px; }
 .addf .ntime { position: absolute; right: 46px; top: 50%; transform: translateY(-50%); height: 24px; padding: 0 8px; border-radius: 8px; background: #F2F2F4; color: #55555B; font-size: 12.5px; font-weight: 700; line-height: 24px; white-space: nowrap; pointer-events: none; }
 .addf .nt-star { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; margin: 0; border-radius: 9px; opacity: 1; background: none; color: #A9A9B0; }
 .addf .nt-star:hover { background: #F2F2F4; color: #77777E; }
@@ -113,3 +113,14 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; }
 @media (max-width: 640px) {
   .nt-tile.updating .copy span { display: none; }
 }
+
+/* the link menu field, and Next up's link */
+.tm-link { display: flex; align-items: center; gap: 8px; margin: 2px 4px 4px; padding: 0 10px; height: 34px; border-radius: 9px; background: #F2F2F4; color: #8A8A90; }
+.tm-link:focus-within { box-shadow: 0 0 0 2px var(--ink); color: var(--ink); }
+.tm-link svg { flex: none; width: 15px; height: 15px; }
+.tm-link input { flex: 1; min-width: 0; height: 100%; font-size: 13.5px; color: var(--ink); outline: 0; }
+.tm-link input::placeholder { color: #A8A8AE; }
+.nx-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.nx-open { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 11px; background: rgba(255, 255, 255, .22); color: #fff; font-size: 14px; font-weight: 700; text-decoration: none; transition: background .15s; }
+.nx-open svg { width: 15px; height: 15px; }
+.nx-open:hover { background: rgba(255, 255, 255, .34); }

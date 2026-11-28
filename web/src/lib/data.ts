@@ -49,12 +49,14 @@ export function eventsOn(d: Saved, D: number): CalEvent[] {
 }
 
 // ---------- Today: a day's tasks are its routines, one-offs and events ----------
+/** the link an event opens: the one you gave it, or a contest's page */
+export const linkOf = (e: CalEvent) => e.url || e.ct?.url;
 export const statusOf = (d: Saved, D: number, id: string): Status => d.status[D + '|' + id] || 'todo';
 export function tasksForDay(d: Saved, D: number): Task[] {
   const day = dateOf(D), out: Task[] = [];
-  d.routines.forEach(r => { if (routineOn(r, day)) out.push({ id: r.id, title: r.title, cal: r.cal, kind: 'routine' }); });
+  d.routines.forEach(r => { if (routineOn(r, day)) out.push({ id: r.id, title: r.title, cal: r.cal, kind: 'routine', url: r.url }); });
   d.oneoffs.filter(o => o.day === D).forEach(o => out.push({ ...o, kind: 'oneoff' }));
-  eventsOn(d, D).forEach(e => out.push({ id: e.id, title: e.short || e.title, cal: e.cal, s: e.s, time: fmtTime(e.s), kind: 'event' }));
+  eventsOn(d, D).forEach(e => out.push({ id: e.id, title: e.short || e.title, cal: e.cal, s: e.s, time: fmtTime(e.s), kind: 'event', url: linkOf(e) }));
   return out;
 }
 // when a task starts, for sorting; tasks without a time come first

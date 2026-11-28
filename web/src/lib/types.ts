@@ -8,14 +8,15 @@ export type Status = 'todo' | 'prog' | 'done';
 /** an Hours category: solid is the block colour, fg the text on it */
 export interface Cat { id: string; name: string; solid: string; fg: string; custom?: boolean }
 
-/** a timed event. `rep` ("Weekly · Mon, Wed") repeats it every week on its weekday; `skip` holds deleted single days */
-export interface CalEvent { id: string; cal: CalId; day: number; s: number; e: number; title: string; short?: string; rep?: string; skip?: number[]; ct?: ContestRef }
+/** a timed event. `rep` ("Weekly · Mon, Wed") repeats it every week on its weekday; `skip` holds deleted single days.
+ *  Events, routines and one-offs can carry `url`: a link the task opens (a meeting, a page), shown beside its star. */
+export interface CalEvent { id: string; cal: CalId; day: number; s: number; e: number; title: string; short?: string; rep?: string; skip?: number[]; ct?: ContestRef; url?: string }
 /** a contest the app put in the calendar by itself: where it's from, its page, and when the site said it runs (ms) */
 export interface ContestRef { plat: string; url: string; start: number; end: number }
 /** repeats with no time, so it shows as a dot. months: 'YYYY-MM' → getDay() numbers; a month without one carries the last over */
-export interface Routine { id: string; cal: CalId; title: string; months: Record<string, number[]>; skip?: number[] }
+export interface Routine { id: string; cal: CalId; title: string; months: Record<string, number[]>; skip?: number[]; url?: string }
 /** a one-off task, from Today, the widget or the Calendar */
-export interface OneOff { id: string; day: number; cal: CalId; title: string; s?: number; time?: string }
+export interface OneOff { id: string; day: number; cal: CalId; title: string; s?: number; time?: string; url?: string }
 
 /** hours filled in from a finished task ('YYYY-MM-DD|hour' → this); a stamp from Review is { id: 'stamp', cat, prev } */
 export interface AutoHour { id: string; cat: string; prev?: string | null }
@@ -48,4 +49,4 @@ export interface Saved {
 }
 
 /** a task on a day: a routine, a one-off or an event */
-export interface Task { id: string; title: string; cal: CalId; kind: 'routine' | 'oneoff' | 'event'; s?: number; time?: string; day?: number }
+export interface Task { id: string; title: string; cal: CalId; kind: 'routine' | 'oneoff' | 'event'; s?: number; time?: string; day?: number; url?: string }

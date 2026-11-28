@@ -1,5 +1,6 @@
 // Tessera · Today: the day's routines, events and one-off tasks in one list. Drag a task to In progress or Done,
-// star it to keep it on top, right-click it to change its category. Finishing a task with a time fills its hours in Hours.
+// star it to keep it on top, right-click it to change its category or give it a link (a meeting, a page), which then
+// sits beside its star. Finishing a task with a time fills its hours in Hours.
 // The New task tile also logs a project update ("Portfolio: new hero section"), filed under today in its project file in Review.
 // Ticking or dragging a task moves it with a layout animation: it slides to its new place instead of jumping.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
@@ -11,13 +12,15 @@ import { setUI, toast, ui, useUI, reducedMotion } from '../store/ui';
 import { logUpdate, recentProjects, syncHours } from '../store/rules';
 import { inApp } from '../store/backend';
 import { invoke } from '@tauri-apps/api/core';
-import { CALS, calColor, eventsOn, startOf, statusOf, tasksForDay } from '../lib/data';
+import { CALS, calColor, eventsOn, linkOf, startOf, statusOf, tasksForDay } from '../lib/data';
+import { cleanUrl, linkName, readTask } from '../lib/links';
 import { DAY_LONG, DAY_NAMES, MONTHS, dateOf, fmtTime } from '../lib/dates';
-import { SORT_NAMES, SORT_ORDER, sortTask, sortTeach, sortTime } from '../lib/sort';
+import { SORT_NAMES, SORT_ORDER, sortTask, sortTeach } from '../lib/sort';
 import type { CalId, Saved, Status, Task } from '../lib/types';
 import { Bento, Copy, Tile, EASE } from '../ui/motion';
 import { CountUp } from '../ui/CountUp';
-import { Check, Star } from '../ui/icons';
+import { Check, LinkIcon, Star } from '../ui/icons';
+import { TaskLink } from '../ui/TaskLink';
 
 const ST_NAME: Record<Status, string> = { todo: 'To do', prog: 'In progress', done: 'Done' };
 const taskSource = (d: Saved, id: string) => d.routines.find(r => r.id === id) || d.events.find(e => e.id === id) || d.oneoffs.find(o => o.id === id);
@@ -44,10 +47,20 @@ function setCat(id: string, cal: CalId) {
   toast(`Filed under ${SORT_NAMES[cal]}. It will remember.`);
 }
 
-// ---------- the task menu (right-click): change the category, move the task, or delete a one-off ----------
+// a link for a task, from the menu: pasted, cleaned, saved on the routine, event or one-off itself (so every day of it has it)
+function setLink(id: string, raw: string) {
+  const url = raw.trim() ? cleanUrl(raw) : null;
+  if (raw.trim() && !url) { toast('That doesn’t look like a link'); return false; }
+  update(d => { const src = taskSource(d as Saved, id); if (!src) return; if (url) src.url = url; else delete src.url; });
+  toast(url ? `Linked to ${linkName(url)}. Open it from the button beside the star` : 'Link removed');
+  return true;
+}
+
+// ---------- the task menu (right-click): change the category, move the task, give it a link, or delete a one-off ----------
 function TaskMenu({ x, y, id, day, close }: { x: number; y: number; id: string; day: number; close: () => void }) {
   const d = useData(s => s.d), ref = useRef<HTMLDivElement>(null);
   const src = taskSource(d, id), st = statusOf(d, day, id), cur = src?.cal, oneoff = !!d.oneoffs.find(o => o.id === id);
+  const own = src?.url, contest = src && 'ct' in src ? src.ct?.url : undefined;
   useLayoutEffect(() => {
     const m = ref.current!; const w = m.offsetWidth, h = m.offsetHeight;
     m.style.left = Math.max(8, Math.min(innerWidth - w - 8, x)) + 'px';
@@ -70,6 +83,11 @@ function TaskMenu({ x, y, id, day, close }: { x: number; y: number; id: string; 
       {SORT_ORDER.map(c => <button key={c} role="menuitem" className={cur === c ? 'on' : ''} style={{ ['--c' as string]: CALS[c].color }} onClick={run(() => setCat(id, c))}><i />{SORT_NAMES[c]}</button>)}
       <small>Move to</small>
       {(['todo', 'prog', 'done'] as Status[]).map(s => <button key={s} role="menuitem" className={st === s ? 'on' : ''} onClick={run(() => setStatus(day, id, s))}>{ST_NAME[s]}</button>)}
+      <small>Link</small>
+      <form className="tm-link" onSubmit={e => { e.preventDefault(); if (setLink(id, new FormData(e.currentTarget).get('url') as string)) close(); }}>
+        <LinkIcon /><input name="url" defaultValue={own || ''} placeholder={contest ? 'Its contest page, or paste another' : 'Paste a meeting or page link'} aria-label="Link" autoComplete="off" spellCheck={false} />
+      </form>
+      {own && <button role="menuitem" onClick={run(() => setLink(id, ''))}>Remove link</button>}
       {oneoff && <button role="menuitem" className="del" onClick={run(() => { update(dr => { dr.oneoffs = dr.oneoffs.filter(o => o.id !== id); }); toast('Task deleted'); })}>Delete task</button>}
     </motion.div>, document.body);
 }
@@ -81,7 +99,7 @@ function useDragTasks(root: React.RefObject<HTMLElement | null>, onDrop: (id: st
     const host = root.current; if (!host) return;
     const down = (e: PointerEvent) => {
       const el = (e.target as Element).closest<HTMLElement>('[data-drag]');
-      if (!el || e.button !== 0 || e.pointerType === 'touch' || (e.target as Element).closest('button, input')) return;
+      if (!el || e.button !== 0 || e.pointerType === 'touch' || (e.target as Element).closest('button, input, a')) return;
       e.preventDefault();
       const id = el.dataset.drag!, x0 = e.clientX, y0 = e.clientY, zones = [...host.querySelectorAll<HTMLElement>('[data-drop]')];
       let ghost: HTMLElement | null = null, hot: HTMLElement | null = null;
@@ -162,6 +180,7 @@ export function Today() {
       <button className="chk" aria-label={`Tick ${t.title}`} onClick={() => tickTask(day, t.id)}><Check /></button>
       <span className="t">{t.title}</span>
       <StarBtn id={t.id} title={t.title} on={starred(t)} day={day} />
+      <TaskLink url={t.url} title={t.title} />
       {t.time && <time>{t.time}</time>}
     </motion.div>
   );
@@ -171,6 +190,7 @@ export function Today() {
         <button className="chk" aria-label={`Tick ${t.title}`} onClick={() => tickTask(day, t.id)}><Check /></button>
         <span>{t.title}</span>
         <StarBtn id={t.id} title={t.title} on={starred(t)} day={day} />
+        <TaskLink url={t.url} title={t.title} />
         {t.time && <time>{t.time}</time>}
       </div>
       <input key={day + '|' + t.id} defaultValue={d.notes[day + '|' + t.id] || ''} placeholder="Where did you stop?" aria-label={`Note for ${t.title}`}
@@ -209,7 +229,8 @@ export function Today() {
         </motion.div>
       </Tile>
       <Tile area="next" g="g-orange">
-        <div className="copy"><span className="label">Next up</span></div>
+        <div className="copy nx-head"><span className="label">Next up</span>
+          {next && linkOf(next) && <a className="nx-open" href={linkOf(next)} target="_blank" rel="noopener noreferrer" title={`Open in ${linkName(linkOf(next)!)}`}><LinkIcon />{linkName(linkOf(next)!)}</a>}</div>
         {next ? <>
           <div className="stat" style={{ fontSize: 'clamp(40px, 8.5vh, 70px)' }}>{fmtTime(next.s)}</div>
           <div className="aside next-what">{next.short || next.title}<small>{evs[1] ? 'then ' + (evs[1].short || evs[1].title) : 'last one today'}</small></div>
@@ -247,15 +268,16 @@ export function Today() {
 function NewTile({ label, day, updating }: { label: string; day: number; updating: boolean }) {
   const d = useData(s => s.d), ntStar = useUI(s => s.ntStar);
   const [value, setValue] = useState(''), input = useRef<HTMLInputElement>(null);
-  const tm = !updating ? sortTime(value.trim()) : null;
+  // what's typed so far: its time and link show in a chip in the field
+  const typed = !updating && value.trim() ? readTask(value) : null, chip = typed && [typed.url && 'Link', typed.s != null && fmtTime(typed.s)].filter(Boolean).join(' · ');
   const mode = (m: 'task' | 'update') => { setUI({ ntMode: m }); setValue(''); setTimeout(() => input.current?.focus()); };
   const addTask = (e: FormEvent) => {
     e.preventDefault();
     const raw = value.trim(); if (!raw) return input.current?.focus();
-    const t = sortTime(raw), title = t ? t.title : raw;
-    const o = { id: 'o' + Date.now(), day, cal: sortTask(d, title).cal, title, ...(t ? { s: t.s, time: fmtTime(t.s) } : {}) };
+    const t = readTask(raw);
+    const o = { id: 'o' + Date.now(), day, cal: sortTask(d, t.title).cal, title: t.title, ...(t.s != null ? { s: t.s, time: fmtTime(t.s) } : {}), ...(t.url ? { url: t.url } : {}) };
     update(dr => { dr.oneoffs.push(o); if (ntStar) dr.stars[day + '|' + o.id] = true; });
-    toast((ntStar ? 'Starred and added' : 'Added') + (o.time ? ` for ${o.time}` : ''));
+    toast((ntStar ? 'Starred and added' : 'Added') + (o.time ? ` for ${o.time}` : '') + (o.url ? `, with its ${linkName(o.url)} link` : ''));
     setUI({ ntStar: false, fresh: o.id }); setValue('');
   };
   // a project update: "Project: what happened" goes into that project's week; a project it doesn't know gets a file
@@ -283,9 +305,9 @@ function NewTile({ label, day, updating }: { label: string; day: number; updatin
       </> : <>
         <Copy b="New task." s={`For ${label.toLowerCase()}.`} />
         <form className="addf" id="add-task" autoComplete="off" onSubmit={addTask}>
-          <div className={'nt' + (tm ? ' has-time' : '')}>
-            <input id="nt" ref={input} value={value} onChange={e => setValue(e.target.value)} placeholder="e.g. Buy protein at 6pm" aria-label="Task. Add a time like at 6pm" />
-            <AnimatePresence>{tm && <motion.span key="t" className="ntime" initial={{ opacity: 0, scale: 0.85, y: '-50%' }} animate={{ opacity: 1, scale: 1, y: '-50%' }} exit={{ opacity: 0, scale: 0.85, y: '-50%' }} transition={{ duration: 0.16 }}>{fmtTime(tm.s)}</motion.span>}</AnimatePresence>
+          <div className={'nt' + (chip ? ' has-time' : '')}>
+            <input id="nt" ref={input} value={value} onChange={e => setValue(e.target.value)} placeholder="e.g. Buy protein at 6pm" aria-label="Task. Add a time like at 6pm, or paste a meeting link" />
+            <AnimatePresence>{chip && <motion.span key="t" className="ntime" initial={{ opacity: 0, scale: 0.85, y: '-50%' }} animate={{ opacity: 1, scale: 1, y: '-50%' }} exit={{ opacity: 0, scale: 0.85, y: '-50%' }} transition={{ duration: 0.16 }}>{chip}</motion.span>}</AnimatePresence>
             <button type="button" className={'star nt-star' + (ntStar ? ' on' : '')} aria-pressed={ntStar} aria-label="Star this task" onClick={() => { setUI({ ntStar: !ntStar }); input.current?.focus(); }}><Star /></button>
           </div>
           <button className="add" type="submit">Add task</button>

@@ -8,6 +8,7 @@ import { closePop, openPop, setUI, toast, ui, useUI } from '../store/ui';
 import { CALS, PLATFORMS, calColor, eventsOn, routineDaysForKey, routineOn, statusOf } from '../lib/data';
 import { DAY_LONG, DAY_NAMES, MON3, MONTHS, addDays, dateOf, dayIdx, dayLabel, daySummary, fmtTime, fromHHMM, monthKey, monthLabel, toHHMM, weekStart } from '../lib/dates';
 import { sortTask, sortTeach, sortTime } from '../lib/sort';
+import { cleanUrl, readTask, splitLink } from '../lib/links';
 import type { CalId } from '../lib/types';
 import { Bento, Copy, Tile, EASE } from '../ui/motion';
 import { CountUp } from '../ui/CountUp';
@@ -59,30 +60,39 @@ function Foot({ asking, setAsking, del, save }: { asking: { q: string; choices: 
   return <div className="pfoot"><button type="button" className="pbtn redt" onClick={del}>Delete</button><button type="button" className="pbtn dark" onClick={save}>Save</button></div>;
 }
 const calDone = (msg: string, fresh?: string[]) => { closePop(); if (fresh) setUI({ calFresh: fresh }); toast(msg); };
+/** a link the event opens (a meeting, a page); it shows as a button beside the task's star in Today */
+function LinkField({ value, set }: { value: string; set: (v: string) => void }) {
+  return <input className="pfield" type="url" value={value} onChange={e => set(e.target.value)} placeholder="Meeting or page link (optional)" aria-label="Link" autoComplete="off" spellCheck={false} />;
+}
+/** what's in a link field, made safe to open; false when something is typed that isn't a link */
+const fieldUrl = (v: string) => { const t = v.trim(); return t ? cleanUrl(t) || false : null; };
 
 // + or a double-click on a day: title, day, optional time, optional weekly repeat. The colour is picked for you.
 function AddCard({ D }: { D: number }) {
   const D0 = shownWeek(ui().wk);
   const [pick, setPick] = useState<number[]>([D]), [timed, setTimed] = useState(false), [rep, setRep] = useState(false);
-  const [s, setS] = useState(18), [en, setEn] = useState(19), [title, setTitle] = useState('');
+  const [s, setS] = useState(18), [en, setEn] = useState(19), [title, setTitle] = useState(''), [link, setLink] = useState('');
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => { ref.current?.focus(); }, []);
   const add = () => {
     const raw = title.trim(); if (!raw) return ref.current?.focus();
-    const d = useData.getState().d, tm = sortTime(raw), name = tm ? tm.title : raw, cal = sortTask(d, name).cal;
+    const typed = readTask(raw), field = fieldUrl(link);
+    if (field === false) return toast('That doesn’t look like a link');
+    const d = useData.getState().d, name = typed.title, cal = sortTask(d, name).cal, url = field || typed.url;
+    const withUrl = url ? { url } : {};
     const sel = [...pick].sort((a, b) => a - b), dows = sel.map(x => dateOf(x).getDay());
     const ids: string[] = []; let msg: string;
     if (timed) {
       const e2 = en <= s ? Math.min(24, s + 1) : en;
-      update(dr => { sel.forEach((x, n) => { const id = 'e' + Date.now() + n; ids.push(id); dr.events.push({ id, cal, day: x, s, e: e2, title: name, rep: rep ? 'Weekly · ' + daySummary(dows) : '' }); }); });
+      update(dr => { sel.forEach((x, n) => { const id = 'e' + Date.now() + n; ids.push(id); dr.events.push({ id, cal, day: x, s, e: e2, title: name, rep: rep ? 'Weekly · ' + daySummary(dows) : '', ...withUrl }); }); });
       msg = `Added at ${fmtTime(s)}${rep ? ', every week' : ''}`;
     } else if (rep) {
       const id = 'r' + Date.now(); ids.push(id);
-      update(dr => { dr.routines.push({ id, cal, title: name, months: { [monthKey(dateOf(sel[0]))]: dows } }); });
+      update(dr => { dr.routines.push({ id, cal, title: name, months: { [monthKey(dateOf(sel[0]))]: dows }, ...withUrl }); });
       msg = 'Repeats with no time, so it shows as a dot';
     } else {
       const id = 'o' + Date.now(); ids.push(id);
-      update(dr => { dr.oneoffs.push({ id, day: sel[0], cal, title: name }); });
+      update(dr => { dr.oneoffs.push({ id, day: sel[0], cal, title: name, ...withUrl }); });
       msg = `Added to ${dayLabel(sel[0])}`;
     }
     calDone(msg, ids);
@@ -93,7 +103,12 @@ function AddCard({ D }: { D: number }) {
   return <>
     <PopTop label="New event" />
     <input className="ptitle" id="pe-t" ref={ref} value={title} placeholder="e.g. Mock interview at 6pm" aria-label="Title" autoComplete="off"
-      onChange={e => { setTitle(e.target.value); const tm = sortTime(e.target.value.trim()); if (tm) { setTimed(true); setS(tm.s); setEn(Math.min(24, tm.s + 1)); } }}
+      onChange={e => {
+        setTitle(e.target.value);
+        const { text, url } = splitLink(e.target.value), tm = sortTime(text.trim());
+        if (tm) { setTimed(true); setS(tm.s); setEn(Math.min(24, tm.s + 1)); }
+        if (url && !link) setLink(url);   // a link pasted into the title fills the link field
+      }}
       onKeyDown={e => { if (e.key === 'Enter') add(); }} />
     <div className="plabel">Day</div>
     <div className="pdays">{Array.from({ length: 7 }, (_, i) => <button key={i} type="button" className={pick.includes(D0 + i) ? 'on' : ''} onClick={() => onDay(D0 + i)}>{dayLabel(D0 + i)}</button>)}</div>
@@ -106,6 +121,8 @@ function AddCard({ D }: { D: number }) {
         <input type="time" id="pe-e" aria-label="Ends" value={toHHMM(en)} onChange={e => setEn(fromHHMM(e.target.value || '19:00'))} />
       </span>
     </div>
+    <div className="plabel">Link</div>
+    <LinkField value={link} set={setLink} />
     <button type="button" className={'ptog' + (rep ? ' on' : '')} id="pe-rep" aria-pressed={rep} onClick={() => { const r = !rep; setRep(r); if (!r && pick.length > 1) setPick([Math.min(...pick)]); }}><i />Repeat every week</button>
     <div className="pfoot"><button type="button" className="pbtn" onClick={closePop}>Cancel</button><button type="button" className="pbtn dark" id="pe-add" onClick={add}>Add</button></div>
   </>;
@@ -118,12 +135,15 @@ function EditCard({ id, D }: { id: string; D: number }) {
   const day = dateOf(D);
   const [cal, setCal] = useState<CalId>(item.cal), [t, setT] = useState<number | null>(o ? (o.s ?? null) : null);
   const [title, setTitle] = useState(item.title), [es, setEs] = useState(e ? toHHMM(e.s) : ''), [ee, setEe] = useState(e ? toHHMM(e.e) : '');
+  const [link, setLink] = useState(item.url || '');
   const [asking, setAsking] = useState<{ q: string; choices: Choice[] } | null>(null);
   const kind = e ? (e.rep ? `Repeats · ${e.rep.replace(/^Weekly · /, 'every ')}` : 'Event') : 'Task';
   const save = () => {
-    const v = title.trim();
+    const v = title.trim(), url = fieldUrl(link);
+    if (url === false) return toast('That doesn’t look like a link');
     update(dr => {
       const it = e ? dr.events.find(x => x.id === id) : dr.oneoffs.find(x => x.id === id); if (!it) return;
+      if (url) it.url = url; else delete it.url;
       if (v && v !== it.title) { it.title = v; if ('short' in it) delete it.short; }
       if (cal !== it.cal) { it.cal = cal; sortTeach(dr.sort, ('short' in it && it.short) || it.title, cal); }
       if (e && 'e' in it) {
@@ -157,6 +177,7 @@ function EditCard({ id, D }: { id: string; D: number }) {
         : t != null ? <><input type="time" id="pe-s" value={toHHMM(t)} onChange={ev => setT(fromHHMM(ev.target.value || '18:00'))} aria-label="Time" /><button type="button" className="plink" onClick={() => setT(null)}>No time</button></>
         : <><span className="pmuted">No time</span><button type="button" className="plink" onClick={() => { setT(18); setTimeout(() => document.getElementById('pe-s')?.focus()); }}>Add a time</button></>}
     </div>
+    <LinkField value={link} set={setLink} />
     <CatChips cal={cal} set={setCal} />
     <Foot asking={asking} setAsking={setAsking} del={del} save={save} />
   </>;
@@ -166,13 +187,15 @@ function EditCard({ id, D }: { id: string; D: number }) {
 function RoutineCard({ id, D }: { id: string; D: number | null }) {
   const r = useData.getState().d.routines.find(x => x.id === id)!;
   const mk = monthKey(dateOf(D ?? Math.max(clock().T, shownWeek(ui().wk))));
-  const [days, setDays] = useState<number[]>([...routineDaysForKey(r, mk)]), [cal, setCal] = useState<CalId>(r.cal), [title, setTitle] = useState(r.title);
+  const [days, setDays] = useState<number[]>([...routineDaysForKey(r, mk)]), [cal, setCal] = useState<CalId>(r.cal), [title, setTitle] = useState(r.title), [link, setLink] = useState(r.url || '');
   const [asking, setAsking] = useState<{ q: string; choices: Choice[] } | null>(null);
   const save = () => {
     if (!days.length) return toast('Pick at least one day');
-    const v = title.trim();
+    const v = title.trim(), url = fieldUrl(link);
+    if (url === false) return toast('That doesn’t look like a link');
     update(dr => {
       const x = dr.routines.find(y => y.id === id); if (!x) return;
+      if (url) x.url = url; else delete x.url;
       if (v) x.title = v;
       if (cal !== x.cal) { x.cal = cal; sortTeach(dr.sort, x.title, cal); }
       Object.keys(x.months).forEach(m => { if (m > mk) delete x.months[m]; });
@@ -191,6 +214,7 @@ function RoutineCard({ id, D }: { id: string; D: number | null }) {
     <input className="ptitle" id="pe-t" value={title} onChange={e => setTitle(e.target.value)} aria-label="Title" autoComplete="off" />
     <div className="plabel">Repeats on · from {monthLabel(mk)}</div>
     <div className="pdays wk">{[1, 2, 3, 4, 5, 6, 0].map(x => <button key={x} type="button" className={days.includes(x) ? 'on' : ''} onClick={() => setDays(days.includes(x) ? days.filter(y => y !== x) : [...days, x])}>{DAY_NAMES[x].slice(0, 2)}</button>)}</div>
+    <LinkField value={link} set={setLink} />
     <CatChips cal={cal} set={setCal} />
     <Foot asking={asking} setAsking={setAsking} del={del} save={save} />
   </>;

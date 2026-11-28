@@ -17,10 +17,12 @@ import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { calColor, startOf, statusOf, tasksForDay } from './lib/data';
 import { DAY_NAMES, MONTHS, fmtTime } from './lib/dates';
-import { sortTask, sortTime } from './lib/sort';
+import { sortTask } from './lib/sort';
+import { readTask } from './lib/links';
 import type { Task } from './lib/types';
 import { EASE } from './ui/motion';
 import { Check } from './ui/icons';
+import { TaskLink } from './ui/TaskLink';
 import './styles/app.css';
 import './styles/widget.css';
 import './styles/motion.css';
@@ -47,7 +49,7 @@ function Widget() {
   const tasks = tasksForDay(d, T), st = (t: Task) => statusOf(d, T, t.id), starred = (t: Task) => !!d.stars[T + '|' + t.id];
   const order = (a: Task, b: Task) => (+starred(b) - +starred(a)) || (startOf(a) - startOf(b));
   const prog = tasks.filter(t => st(t) === 'prog').sort(order), todo = tasks.filter(t => st(t) === 'todo').sort(order), done = tasks.filter(t => st(t) === 'done').sort(order);
-  const n = tasks.length, tm = sortTime(value.trim());
+  const n = tasks.length, typed = value.trim() ? readTask(value) : null;
   const fade = () => { const r = rows.current; if (r) setMore(r.scrollTop + r.clientHeight < r.scrollHeight - 4); };
   useLayoutEffect(fade);
   useEffect(() => { if (!fresh) return; const t = setTimeout(() => setFresh(null), 1200); return () => clearTimeout(t); }, [fresh]);
@@ -55,12 +57,12 @@ function Widget() {
 
   // tick: done, or back to the list; a task with a time fills its hours in Hours
   const tick = (id: string) => { update(dr => { const k = T + '|' + id; dr.status[k] = dr.status[k] === 'done' ? 'todo' : 'done'; syncHours(dr, T); }); save(); };
-  // add: "at 7pm" sets the time; the category is picked the same way as in Today
+  // add: "at 7pm" sets the time, a pasted meeting link goes on the task; the category is picked the same way as in Today
   const add = (e: FormEvent) => {
     e.preventDefault();
     const raw = value.trim(); if (!raw) return input.current?.focus();
-    const t = sortTime(raw), title = t ? t.title : raw;
-    const o = { id: 'o' + Date.now(), day: T, cal: sortTask(d, title).cal, title, ...(t ? { s: t.s, time: fmtTime(t.s) } : {}) };
+    const t = readTask(raw);
+    const o = { id: 'o' + Date.now(), day: T, cal: sortTask(d, t.title).cal, title: t.title, ...(t.s != null ? { s: t.s, time: fmtTime(t.s) } : {}), ...(t.url ? { url: t.url } : {}) };
     update(dr => { dr.oneoffs.push(o); }); save();
     setFresh(o.id); setValue(''); input.current?.focus();
   };
@@ -69,7 +71,7 @@ function Widget() {
     return (
       <motion.div key={t.id} {...slide} className={`row ${st(t)}${t.id === fresh ? ' fresh' : ''}`} style={{ ['--c' as string]: calColor(t.cal) }}>
         <button className="chk" aria-label={`${st(t) === 'done' ? 'Untick' : 'Tick'} ${t.title}`} aria-pressed={st(t) === 'done'} onClick={() => tick(t.id)}><Check /></button>
-        <span className="t">{t.title}{note && st(t) === 'prog' && <i>{note}</i>}</span>{t.time && <time>{t.time}</time>}
+        <span className="t">{t.title}{note && st(t) === 'prog' && <i>{note}</i>}</span><TaskLink url={t.url} title={t.title} />{t.time && <time>{t.time}</time>}
       </motion.div>
     );
   };
@@ -93,9 +95,9 @@ function Widget() {
           <AnimatePresence initial={false} mode="popLayout">{list}</AnimatePresence>
         </motion.div>
         <div className="foot">
-          <form className="add" autoComplete="off" onSubmit={add}>
+          <form className={'add' + (typed && (typed.url || typed.s != null) ? ' has-when' : '')} autoComplete="off" onSubmit={add}>
             <input id="add" ref={input} value={value} onChange={e => setValue(e.target.value)} placeholder="Add a task, e.g. Call home at 7pm" aria-label="New task for today. Add a time like at 7pm" />
-            <span className="when" hidden={!tm}>{tm ? fmtTime(tm.s) : ''}</span><button>Add</button>
+            <span className="when" hidden={!typed || (typed.s == null && !typed.url)}>{typed ? [typed.url && 'Link', typed.s != null && fmtTime(typed.s)].filter(Boolean).join(' · ') : ''}</span><button>Add</button>
           </form>
         </div>
       </div>
