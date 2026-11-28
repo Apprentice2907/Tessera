@@ -116,10 +116,18 @@ Review counts each monthly folder's days and hours from Hours.
 
 ## The to-do widget
 
-- `widget.html` is Today's list on its own: keep it open, add it to a phone's home screen, or embed it.
-- `mockup/desktop/widget.pyw` puts it on the Windows desktop (`widget.html?desk`): a borderless card behind your
-  windows that you can drag and resize. It needs `pip install pywebview`, and starts the server if it isn't running.
-  A shortcut to it in the Startup folder starts it at sign-in.
+- In the app, the widget is Tessera's second window: Today's list as a small card on the desktop, behind your other
+  windows. It's the same list as Today, so a task ticked in one is ticked in the other. Starred tasks come first. You
+  can tick a task, add one ("Call home at 7pm"), or open its link.
+- The first time, it sits at the bottom left of the desktop. Drag any empty part of the card to move it, and the corner
+  to resize it. It keeps its place and size.
+- "Open Tessera" opens the app on Today. The × hides the widget; "Desktop widget" in the tray icon's menu brings it back.
+- Closing the app's window while the widget is on keeps Tessera running for the widget. When Tessera starts with
+  Windows, only the widget opens.
+- It turns to the new day at midnight, so it can stay open for days.
+- In a browser, `widget.html` is the same list on its own page: keep it open, add it to a phone's home screen, or embed
+  it. The older Python widget, `mockup/desktop/widget.pyw` (it needs `pip install pywebview`), still puts it on the
+  desktop for the browser setup; the app doesn't need it.
 
 ## How the code is laid out
 
@@ -131,7 +139,7 @@ web/                    the app (React + TypeScript + Vite)
     main.tsx, widget.tsx              entries: load the saved state, keep Hours in step, start the clock, draw
     App.tsx                           the shell: routes, page switcher, keys, page transitions
     lib/        dates.ts (day numbers from a fixed Monday), types.ts (the saved format), data.ts (fixed tables
-                and helpers), sort.ts (the on-device task sorter)
+                and helpers), sort.ts (the on-device task sorter), links.ts (links on tasks)
     store/      data.ts (the Zustand store), persist.ts (saving, sync, backups), rules.ts (cross-page rules),
                 clock.ts (today and the time), ui.ts (toast, the pop-up card, what pages remember)
     ui/         motion.tsx (Bento, Tile, Copy), CountUp, Strip (hour strip), Pop (pop-up card, toast), DataCard, icons
@@ -141,8 +149,10 @@ web/                    the app (React + TypeScript + Vite)
                 and the React parts: Canvas, Chrome (bars, tools), Cards (menus, options, drawer, dialogs)
     styles/     app.css (design system: tokens, grid, tiles) and one stylesheet per page
   public/       assets/ (icons, the widget's web manifest)
-mockup/                 the local side: the server and the desktop widget (the name is kept so your data folder,
-                        mockup/.data, and the Startup shortcut keep working)
+  src-tauri/    the desktop app's Rust side: lib.rs (data files, backups, contests, the tray, the widget window),
+                tauri.conf.json (windows and installer)
+mockup/                 the browser side: the server, and the older Python widget (the name is kept so old paths,
+                        like mockup/.data, keep working)
   serve.py              local server: saved state, daily backups, contests; serves web/dist
-  desktop/              the Windows desktop widget
+  desktop/              the older Python desktop widget, for the browser setup
 ```

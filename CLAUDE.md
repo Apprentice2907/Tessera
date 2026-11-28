@@ -6,7 +6,7 @@ midnight, and is used every day with real data. Repo: github.com/Apprentice2907/
 `README.md` is the user-facing guide; this file is the working summary. Machine-specific details (accounts, local
 paths) are in `CLAUDE.local.md`, which is not committed.
 
-## Where it stands (27 Nov 2026)
+## Where it stands (28 Nov 2026)
 
 - **The product is the installed desktop app** (Tauri 2, built from `web/`). It has two windows: "Tessera" (the app) and
   "Tessera widget" (a to-do card that sits behind other windows). A tray icon toggles the widget and start-with-Windows,
@@ -18,8 +18,8 @@ paths) are in `CLAUDE.local.md`, which is not committed.
 - **Retired:** the classic HTML/JS app (deleted), the pywebview widget `mockup/desktop/widget.pyw` (its Startup shortcut
   was renamed `.disabled`), and `serve.py` on port 5178 as the live server. `mockup/.data/store` is a stale old copy;
   `mockup/.data/old-mockup/` is the old sample data.
-- `README.md`'s "The to-do widget" section still describes the retired pywebview widget; the widget is now the Tauri
-  window.
+- **Releases:** GitHub release `v2.0.0` carries the Windows installer. `README.md` links `releases/latest`, so a new
+  release needs no README change.
 
 ## Stack
 
@@ -39,10 +39,11 @@ web/
   index.html, widget.html        entries (the app, the to-do widget)
   src/main.tsx, widget.tsx       load saved state, keep Hours in step, start the clock, render
   src/App.tsx                    shell: routes, page switcher, keys 1–7 and U, page transitions
-  src/lib/      dates.ts (day numbers), types.ts (saved format), data.ts (tables), sort.ts (task sorter)
+  src/lib/      dates.ts (day numbers), types.ts (saved format), data.ts (tables), sort.ts (task sorter),
+                links.ts (links on tasks: cleanUrl, linkName, readTask)
   src/store/    data.ts (Zustand store), persist.ts (save/sync/backup), backend.ts (Tauri vs serve.py vs none),
                 rules.ts (cross-page rules), clock.ts, contests.ts, ui.ts
-  src/ui/       motion.tsx (Bento, Tile, Copy), CountUp, Strip, Pop, DataCard, icons
+  src/ui/       motion.tsx (Bento, Tile, Copy), CountUp, Strip, Pop, DataCard, TaskLink (the link button), icons
   src/pages/    Home, Today, Hours, Calendar, Ideas; ideas/ (whiteboard), wall/, review/
   src/styles/   app.css + one stylesheet per page
   src-tauri/    lib.rs (store, backups, contests, tray, widget window), tauri.conf.json (id app.tessera.desktop)
@@ -60,6 +61,7 @@ mockup/serve.py         browser-side server (name kept so old paths keep working
 | Desktop app, hot reload | `npm run app` (**set `TESSERA_DATA` to a scratch folder first**) |
 | Installer | `npm run app:build` → `web/src-tauri/target/release/bundle/nsis/Tessera_<v>_x64-setup.exe` |
 | Update the installed app | run that installer with `/S` (the app must be closed) |
+| New release | bump `version` in `src-tauri/tauri.conf.json`, build, then a GitHub release `v<version>` with the installer |
 | Browser dev against test data | launch configs `tessera-test` (`python mockup/serve.py 5199 mockup/.data/test`) + `tessera-web` (Vite on 5173, proxies `/api` to 5199) |
 
 The build needs Node.js, Rust and the Visual Studio C++ build tools. `TESSERA_PAGE=<page>` opens the app on a page.
@@ -115,7 +117,6 @@ when asked.
 
 ## Open items
 
-- `README.md`'s widget section describes the retired pywebview widget.
 - Not done yet: code signing (Windows warns on the installer) and a phone build (Tauri mobile).
 - The first commit in the public history (`b9a6a78`) still holds the old personal sample data (it was removed in
   `240741c`). Clearing it means rewriting history and force-pushing, so do it only if the owner asks.
